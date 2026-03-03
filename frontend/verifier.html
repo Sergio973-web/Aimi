@@ -100,53 +100,60 @@ async function loadInteractions() {
     container.innerHTML = "";
 
     data.forEach(interaction => {
-        if(interaction.status !== "stored") {
+        if(interaction.status !== "stored" && interaction.status !== "expert_approved") {
             const div = document.createElement("div");
             div.classList.add("interaction");
+            div.dataset.id = interaction.id;
 
             div.innerHTML = `
                 <div class="question">P: ${interaction.question}</div>
                 <div class="answer">R: ${interaction.answer}</div>
                 <div class="stars">
-                    <button data-stars="1" onclick="vote(${interaction.id}, 1, this)">⭐ 1</button>
-                    <button data-stars="2" onclick="vote(${interaction.id}, 2, this)">⭐⭐ 2</button>
-                    <button data-stars="3" onclick="vote(${interaction.id}, 3, this)">⭐⭐⭐ 3</button>
+                    <button data-stars="1">⭐ 1</button>
+                    <button data-stars="2">⭐⭐ 2</button>
+                    <button data-stars="3">⭐⭐⭐ 3</button>
                 </div>
-                <div class="feedback" id="feedback-${interaction.id}"></div>
+                <div class="feedback"></div>
             `;
             container.appendChild(div);
+
+            // Agregar listener a los botones
+            div.querySelectorAll(".stars button").forEach(btn => {
+                btn.addEventListener("click", async () => {
+                    const stars = parseInt(btn.dataset.stars);
+                    const id = interaction.id;
+                    const feedback = div.querySelector(".feedback");
+
+                    if(stars === 1) {
+                        await fetch(`${apiBase}/vote/verifier`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ interaction_id: id, stars })
+                        });
+                        feedback.textContent = "❌ Eliminado del verificador";
+                        div.remove(); // eliminar del DOM
+                    } else if(stars === 2) {
+                        await fetch(`${apiBase}/vote/verifier`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ interaction_id: id, stars })
+                        });
+                        feedback.textContent = "🔹 Se queda en verificador";
+                        feedback.classList.add("show");
+                        setTimeout(() => feedback.classList.remove("show"), 2000);
+                    } else if(stars === 3) {
+                        await fetch(`${apiBase}/vote/expert`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ interaction_id: id, stars })
+                        });
+                        feedback.textContent = "✅ Pasó al experto";
+                        div.remove(); // eliminar del verificador
+                    }
+                });
+            });
         }
     });
-}
-
-async function vote(interaction_id, stars, btn) {
-    const feedback = document.getElementById(`feedback-${interaction_id}`);
-    if (stars === 1) {
-        await fetch(`${apiBase}/vote/verifier`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ interaction_id, stars })
-        });
-        feedback.textContent = "❌ Eliminado del verificador";
-    } else if (stars === 2) {
-        await fetch(`${apiBase}/vote/verifier`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ interaction_id, stars })
-        });
-        feedback.textContent = "🔹 Se queda en verificador";
-    } else if (stars === 3) {
-        await fetch(`${apiBase}/vote/expert`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ interaction_id, stars })
-        });
-        feedback.textContent = "✅ Pasó al experto";
-    }
-
-    feedback.classList.add("show");
-    setTimeout(() => feedback.classList.remove("show"), 2000);
-    loadInteractions();
 }
 
 // Inicial
