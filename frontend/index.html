@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Aimi Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Estilos básicos -->
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 420px;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    header {
+      background: #4a90e2;
+      color: white;
+      padding: 12px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .chat {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+    }
+
+    .message {
+      margin-bottom: 10px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      max-width: 80%;
+      font-size: 14px;
+    }
+
+    .user {
+      background: #dcf8c6;
+      align-self: flex-end;
+    }
+
+    .aimi {
+      background: #eeeeee;
+      align-self: flex-start;
+    }
+
+    .input-box {
+      display: flex;
+      border-top: 1px solid #ddd;
+    }
+
+    .input-box input {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      outline: none;
+      font-size: 14px;
+    }
+
+    .input-box button {
+      padding: 10px 15px;
+      border: none;
+      background: #4a90e2;
+      color: white;
+      cursor: pointer;
+    }
+
+    .input-box button:hover {
+      background: #357abd;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header>Aimi</header>
+
+    <div id="chat" class="chat"></div>
+
+    <div class="input-box">
+      <input
+        id="userInput"
+        placeholder="Escribí tu mensaje…"
+        onkeydown="if(event.key === 'Enter') send()"
+      />
+      <button onclick="send()">Enviar</button>
+    </div>
+  </div>
+
+  <!-- JS -->
+  <script src="chat.js"></script>
+</body>
+</html>
