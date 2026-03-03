@@ -142,16 +142,22 @@ async def get_interactions():
 async def vote_verifier(v: Vote):
     with get_db() as conn:
         with conn.cursor() as cur:
-            cur.execute("""
-                UPDATE interactions
-                SET verifier_votes = array_append(verifier_votes, %s),
-                    status = CASE
-                        WHEN array_length(array_append(verifier_votes, %s), 1) > 0
-                        THEN 'verified'
-                        ELSE status
-                    END
-                WHERE id = %s;
-            """, (v.stars, v.stars, v.interaction_id))
+            if v.stars == 1:
+                # ⭐ 1: eliminar del verificador
+                cur.execute("""
+                    UPDATE interactions
+                    SET status = 'removed'
+                    WHERE id = %s;
+                """, (v.interaction_id,))
+            elif v.stars == 2:
+                # ⭐ 2: dejar en verificador
+                cur.execute("""
+                    UPDATE interactions
+                    SET verifier_votes = array_append(verifier_votes, %s),
+                        status = 'verified'
+                    WHERE id = %s;
+                """, (v.stars, v.interaction_id))
+            # No incluimos el ⭐3 aquí; eso va al endpoint experto
             conn.commit()
     return {"ok": True}
 
