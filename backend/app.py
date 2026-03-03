@@ -45,7 +45,8 @@ def init_db():
                     answer TEXT NOT NULL,
                     verifier_votes INT[] DEFAULT '{}',
                     expert_votes INT[] DEFAULT '{}',
-                    status TEXT DEFAULT 'pending'
+                    status TEXT DEFAULT 'pending',
+                    topic TEXT
                 );
             """)
             conn.commit()
@@ -67,7 +68,7 @@ class Approve(BaseModel):
     topic: str
 
 # ==========================
-# Embeddings
+# Embeddings (opcional)
 # ==========================
 def embedding(text):
     return client.embeddings.create(
@@ -85,6 +86,15 @@ def cosine(a, b):
 # ==========================
 @app.post("/chat")
 async def chat(msg: Message):
+    # Revisar si la pregunta ya existe en DB
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT answer FROM interactions WHERE question=%s LIMIT 1;", (msg.message,))
+            row = cur.fetchone()
+            if row:
+                return {"answer": row['answer'], "source": "db"}
+
+    # Si no existe, llamar a OpenAI
     try:
         completion = client.chat.completions.create(
             model="gpt-4.1-mini",
@@ -105,6 +115,7 @@ async def chat(msg: Message):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+    # Guardar en DB
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -118,7 +129,7 @@ async def chat(msg: Message):
             interaction = cur.fetchone()
             conn.commit()
 
-    return interaction
+    return {"answer": answer, "source": "ai"}
 
 @app.get("/interactions")
 async def get_interactions():
@@ -167,8 +178,9 @@ async def approve(a: Approve):
         with conn.cursor() as cur:
             cur.execute("""
                 UPDATE interactions
-                SET status = 'stored'
+                SET status = 'stored',
+                    topic = %s
                 WHERE id = %s;
-            """, (a.interaction_id,))
+            """, (a.topic, a.interaction_id))
             conn.commit()
     return {"stored": True}
