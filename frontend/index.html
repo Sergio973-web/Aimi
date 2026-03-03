@@ -1,109 +1,144 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>Aimi Chat</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- Estilos básicos -->
-  <style>
+<meta charset="UTF-8">
+<title>Aimi Chat</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
     body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f2f2f2;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
+        font-family: 'Roboto', sans-serif;
+        background: #f4f7fa;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
     }
-
-    .app {
-      width: 100%;
-      max-width: 420px;
-      background: #ffffff;
-      display: flex;
-      flex-direction: column;
-      border-radius: 8px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      overflow: hidden;
-    }
-
     header {
-      background: #4a90e2;
-      color: white;
-      padding: 12px;
-      text-align: center;
-      font-weight: bold;
+        background: linear-gradient(90deg, #4a90e2, #50e3c2);
+        color: white;
+        padding: 20px;
+        text-align: center;
+        font-size: 2rem;
+        font-weight: 700;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
-
-    .chat {
-      flex: 1;
-      padding: 10px;
-      overflow-y: auto;
+    main {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
     }
-
     .message {
-      margin-bottom: 10px;
-      padding: 8px 10px;
-      border-radius: 6px;
-      max-width: 80%;
-      font-size: 14px;
+        max-width: 70%;
+        padding: 12px 18px;
+        border-radius: 20px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        word-wrap: break-word;
+        animation: fadeIn 0.3s ease;
     }
-
     .user {
-      background: #dcf8c6;
-      align-self: flex-end;
+        background: #4a90e2;
+        color: white;
+        align-self: flex-end;
+        border-bottom-right-radius: 0;
     }
-
     .aimi {
-      background: #eeeeee;
-      align-self: flex-start;
+        background: #e0f7fa;
+        color: #333;
+        align-self: flex-start;
+        border-bottom-left-radius: 0;
     }
-
-    .input-box {
-      display: flex;
-      border-top: 1px solid #ddd;
+    @keyframes fadeIn {
+        from {opacity:0; transform: translateY(10px);}
+        to {opacity:1; transform: translateY(0);}
     }
-
-    .input-box input {
-      flex: 1;
-      padding: 10px;
-      border: none;
-      outline: none;
-      font-size: 14px;
+    footer {
+        padding: 10px 20px;
+        background: #fff;
+        display: flex;
+        gap: 10px;
+        box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
     }
-
-    .input-box button {
-      padding: 10px 15px;
-      border: none;
-      background: #4a90e2;
-      color: white;
-      cursor: pointer;
+    input[type="text"] {
+        flex: 1;
+        padding: 12px 15px;
+        border-radius: 25px;
+        border: 1px solid #ccc;
+        outline: none;
+        font-size: 1rem;
+        transition: border 0.2s;
     }
-
-    .input-box button:hover {
-      background: #357abd;
+    input[type="text"]:focus {
+        border: 2px solid #4a90e2;
     }
-  </style>
+    button {
+        background: linear-gradient(90deg, #4a90e2, #50e3c2);
+        color: white;
+        border: none;
+        border-radius: 25px;
+        padding: 12px 20px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+    @media(max-width: 600px){
+        .message { max-width: 90%; }
+        header { font-size: 1.5rem; }
+    }
+</style>
 </head>
-
 <body>
-  <div class="app">
-    <header>Aimi</header>
+<header>Aimi Chat</header>
+<main id="chat"></main>
+<footer>
+    <input type="text" id="userInput" placeholder="Escribí tu mensaje..." />
+    <button id="sendBtn">Enviar</button>
+</footer>
 
-    <div id="chat" class="chat"></div>
+<script>
+const chatContainer = document.getElementById("chat");
+const input = document.getElementById("userInput");
+const button = document.getElementById("sendBtn");
+const apiBase = "https://aimi-backend-l2u4.onrender.com";
 
-    <div class="input-box">
-      <input
-        id="userInput"
-        placeholder="Escribí tu mensaje…"
-        onkeydown="if(event.key === 'Enter') send()"
-      />
-      <button onclick="send()">Enviar</button>
-    </div>
-  </div>
+// Función para agregar mensaje al chat
+function addMessage(text, cls){
+    const div = document.createElement("div");
+    div.className = "message " + cls;
+    div.textContent = text;
+    chatContainer.appendChild(div);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
 
-  <!-- JS -->
-  <script src="chat.js"></script>
+// Función para enviar mensaje
+async function sendMessage(){
+    const msg = input.value.trim();
+    if(!msg) return;
+    addMessage(msg, "user");
+    input.value = "";
+    try {
+        const res = await fetch(`${apiBase}/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: msg })
+        });
+        const data = await res.json();
+        addMessage(data.answer || "Error: sin respuesta", "aimi");
+    } catch(e){
+        addMessage("Error: no se pudo conectar con el servidor", "aimi");
+        console.error(e);
+    }
+}
+
+// Eventos
+button.addEventListener("click", sendMessage);
+input.addEventListener("keydown", (e) => { if(e.key === "Enter") sendMessage(); });
+</script>
 </body>
 </html>

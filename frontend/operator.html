@@ -1,15 +1,114 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Aimi – Operador</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<title>Aimi Panel Operador</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+    body {
+        font-family: 'Roboto', sans-serif;
+        background: #f4f7fa;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+    }
+    header {
+        background: linear-gradient(90deg, #00c6ff, #0072ff);
+        color: white;
+        padding: 20px;
+        text-align: center;
+        font-size: 2rem;
+        font-weight: 700;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    main {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    .interaction {
+        background: #fff;
+        border-radius: 15px;
+        padding: 15px 20px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        animation: fadeIn 0.3s ease;
+    }
+    .question {
+        font-weight: 500;
+        color: #333;
+    }
+    .answer {
+        margin-top: 8px;
+        color: #555;
+    }
+    .approve {
+        margin-top: 12px;
+        display: flex;
+        gap: 8px;
+    }
+    .approve button {
+        background: linear-gradient(90deg, #00c6ff, #0072ff);
+        border: none;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+    .approve button:hover { transform: scale(1.05); }
+    @keyframes fadeIn {
+        from {opacity:0; transform: translateY(10px);}
+        to {opacity:1; transform: translateY(0);}
+    }
+    @media(max-width: 600px){
+        header { font-size: 1.5rem; }
+    }
+</style>
 </head>
 <body>
-  <h1>Panel Operador</h1>
-  <p>Asigná un tema para que Aimi lo aprenda</p>
-  <div id="list"></div>
+<header>Aimi Panel Operador</header>
+<main id="interactions"></main>
 
-  <script src="operator.js"></script>
+<script>
+const apiBase = "https://aimi-backend-l2u4.onrender.com";
+const container = document.getElementById("interactions");
+
+async function loadInteractions() {
+    container.innerHTML = "";
+    try {
+        const res = await fetch(`${apiBase}/interactions`);
+        const data = await res.json();
+        data.forEach(i => {
+            const div = document.createElement("div");
+            div.className = "interaction";
+            div.innerHTML = `
+                <div class="question"><strong>P:</strong> ${i.question}</div>
+                <div class="answer"><strong>R:</strong> ${i.answer}</div>
+                <div class="approve">
+                    <button onclick="approve(${i.id},'tema_demo')">Guardar ✅</button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    } catch(e){ console.error(e); }
+}
+
+async function approve(id, topic){
+    try {
+        await fetch(`${apiBase}/operator/approve`, {
+            method:"POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({interaction_id:id, topic})
+        });
+        loadInteractions();
+    } catch(e){ console.error(e); }
+}
+
+loadInteractions();
+</script>
 </body>
 </html>
