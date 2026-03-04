@@ -137,26 +137,26 @@ def save_interaction_unique(session_id: str, question: str, answer: str, topic: 
     try:
         with get_db() as conn:
             with conn.cursor() as cur:
-                # Traer últimas interacciones de esta sesión
                 cur.execute(
                     "SELECT id, question FROM interactions WHERE session_id = %s ORDER BY id DESC LIMIT 20;",
                     (session_id,)
                 )
                 rows = cur.fetchall()
 
-                # Revisar similitud
                 for row in rows:
                     if is_similar(question, row['question']):
-                        logging.info(f"Pregunta similar detectada, se omite guardado: {question}")
-                        return row['id']  # devolver id existente
+                        # Actualizar status a pending para pasar a verificador
+                        cur.execute(
+                            "UPDATE interactions SET status='pending', answer=%s, topic=%s WHERE id=%s;",
+                            (answer, topic, row['id'])
+                        )
+                        conn.commit()
+                        logging.info(f"Pregunta similar detectada, se actualiza para verificador: {question}")
+                        return row['id']
 
-                # Guardar nueva interacción
+                # Guardar nueva interacción si no se encontró similar
                 cur.execute(
-                    """
-                    INSERT INTO interactions (question, answer, session_id, topic)
-                    VALUES (%s, %s, %s, %s)
-                    RETURNING id;
-                    """,
+                    "INSERT INTO interactions (question, answer, session_id, topic) VALUES (%s, %s, %s, %s) RETURNING id;",
                     (question, answer, session_id, topic)
                 )
                 conn.commit()
