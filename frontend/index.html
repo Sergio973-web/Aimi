@@ -38,7 +38,7 @@
         word-wrap: break-word;
         animation: fadeIn 0.3s ease;
         line-height: 1.5;
-        white-space: pre-wrap; /* mantiene saltos de línea */
+        white-space: pre-wrap;
     }
     .user {
         background: #4a90e2;
@@ -99,11 +99,41 @@
         .message { max-width: 90%; }
         header { font-size: 1.5rem; }
     }
+    /* === Aimi pensando === */
+    .thinking {
+        font-style: italic;
+        opacity: 0.8;
+    }
+
+    /* Barra de progreso */
+    .progress-container {
+        width: 100%;
+        background: #e0e0e0;
+        border-radius: 10px;
+        margin-top: 8px;
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        height: 8px;
+        width: 0%;
+        background: linear-gradient(90deg, #4a90e2, #50e3c2);
+        animation: loading 1.5s infinite;
+    }
+
+    @keyframes loading {
+        0% { width: 0%; }
+        50% { width: 80%; }
+        100% { width: 0%; }
+    }
 </style>
 </head>
+
 <body>
 <header>Aimi Chat</header>
+
 <main id="chat"></main>
+
 <footer>
     <input type="text" id="userInput" placeholder="Escribí tu mensaje..." />
     <button id="sendBtn">Enviar</button>
@@ -115,13 +145,24 @@ const input = document.getElementById("userInput");
 const button = document.getElementById("sendBtn");
 const apiBase = "https://aimi-backend-l2u4.onrender.com";
 
-// Función para detectar pasos o bullets y convertir en listas
+/* ==========================
+   SESSION ID (MULTIUSUARIO)
+   ========================== */
+let sessionId = localStorage.getItem("aimi_session_id");
+if (!sessionId) {
+    sessionId = crypto.randomUUID();
+    localStorage.setItem("aimi_session_id", sessionId);
+}
+
+/* ==========================
+   Formateo de texto (listas)
+   ========================== */
 function formatText(text){
     const lines = text.split("\n").map(line => line.trim());
     let formatted = lines.map(line => {
-        if(line.match(/^\d+\./)){ // numeración
+        if(line.match(/^\d+\./)){
             return `<li>${line.replace(/^\d+\.\s*/, '')}</li>`;
-        } else if(line.match(/^[-*]\s/)){ // bullets
+        } else if(line.match(/^[-*]\s/)){
             return `<li>${line.replace(/^[-*]\s*/, '')}</li>`;
         } else {
             return line;
@@ -129,13 +170,18 @@ function formatText(text){
     }).join("\n");
 
     if(formatted.includes("<li>")){
-        if(text.match(/^\d+\./)) formatted = `<ol>${formatted}</ol>`;
-        else formatted = `<ul>${formatted}</ul>`;
+        if(text.match(/^\d+\./)) {
+            formatted = `<ol>${formatted}</ol>`;
+        } else {
+            formatted = `<ul>${formatted}</ul>`;
+        }
     }
     return formatted;
 }
 
-// Función para agregar mensaje al chat
+/* ==========================
+   Agregar mensaje al chat
+   ========================== */
 function addMessage(text, cls){
     const div = document.createElement("div");
     div.className = "message " + cls;
@@ -144,29 +190,67 @@ function addMessage(text, cls){
     chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-// Función para enviar mensaje
+/* ==========================
+   Mensaje "Aimi está pensando"
+   ========================== */
+function addThinking(){
+    const div = document.createElement("div");
+    div.className = "message aimi thinking";
+    div.innerHTML = `
+        Aimi está pensando…
+        <div class="progress-container">
+            <div class="progress-bar"></div>
+        </div>
+    `;
+    chatContainer.appendChild(div);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    return div;
+}
+/* ==========================
+   Enviar mensaje
+   ========================== */
 async function sendMessage(){
     const msg = input.value.trim();
     if(!msg) return;
+
     addMessage(msg, "user");
     input.value = "";
+
+    // 👉 mostrar pensando
+    const thinkingEl = addThinking();
+
     try {
         const res = await fetch(`${apiBase}/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: msg })
+            body: JSON.stringify({
+                session_id: sessionId,
+                message: msg
+            })
         });
+
         const data = await res.json();
+
+        // 👉 quitar pensando
+        thinkingEl.remove();
+
         addMessage(data.answer || "Error: sin respuesta", "aimi");
+
     } catch(e){
+        thinkingEl.remove();
         addMessage("Error: no se pudo conectar con el servidor", "aimi");
         console.error(e);
     }
 }
 
-// Eventos
+/* ==========================
+   Eventos
+   ========================== */
 button.addEventListener("click", sendMessage);
-input.addEventListener("keydown", (e) => { if(e.key === "Enter") sendMessage(); });
+input.addEventListener("keydown", (e) => {
+    if(e.key === "Enter") sendMessage();
+});
 </script>
+
 </body>
 </html>
