@@ -164,34 +164,32 @@ async function loadInteractions() {
             const feedback = div.querySelector(".feedback");
 
             // ✅ APROBAR
+            // ---------------------------
+            // BOTÓN APROBAR EXPERTO + OPERADOR
+            // ---------------------------
             div.querySelector(".approve").onclick = async () => {
                 try {
-                    const interactionId = Number(i.id);
-
-                    // Primero pasamos a 'stored' en expert
-                    const expertRes = await fetch(`${apiBase}/expert/approve`, {
+                    // PASAR A EXPERTO (solo interaction_id)
+                    await fetch(`${apiBase}/expert/approve`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ interaction_id: interactionId })
+                        body: JSON.stringify({ interaction_id: Number(i.id) })
                     });
 
-                    if (!expertRes.ok) throw new Error("Error en expert/approve");
-
-                    // Luego pasamos a operador con un topic
-                    const operatorRes = await fetch(`${apiBase}/operator/approve`, {
+                    // PASAR A OPERADOR (con topic)
+                    await fetch(`${apiBase}/operator/approve`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ 
-                            interaction_id: interactionId, 
-                            topic: "tema_demo" // o el topic que quieras asignar
+                            interaction_id: Number(i.id), 
+                            topic: "tema_demo" // topic que quieras
                         })
                     });
-
-                    if (!operatorRes.ok) throw new Error("Error en operator/approve");
 
                     feedback.textContent = "✔ Aprobado y guardado en operador";
                     feedback.style.color = "#27ae60";
                     feedback.classList.add("show");
+
                     setTimeout(() => div.remove(), 600);
 
                 } catch (e) {
