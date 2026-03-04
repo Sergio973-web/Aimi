@@ -94,137 +94,118 @@ def classify_intent(text: str) -> str:
         return "ask_how"
     return "continue"
 
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from collections import deque
-import logging
+@app.post("/chat")
 
-# Asumiendo que client es tu cliente OpenAI
-# from openai import OpenAI
-# client = OpenAI(api_key="TU_API_KEY")
+async def chat(msg: Message):
 
-app = FastAPI()
+# Obtener o crear estado por sesión
 
-MAX_HISTORY = 20  # máximo de interacciones a mantener en memoria por sesión
-conversation_states = {}  # historial por sesión
+state = conversation_states.get(msg.session_id)
 
-# Configuración básica de logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+if not state:
 
-class Message(BaseModel):
-    session_id: str
-    message: str
+state = get_initial_state()
 
-# Funciones auxiliares
-def get_initial_state():
-    return {
-        "history": deque(maxlen=MAX_HISTORY),
-        "current_topic": None,
-        "objective": "Dar respuestas didácticas y visuales",
-        "has_introduced": False
-    }
+conversation_states[msg.session_id] = state
 
-def classify_intent(message: str) -> str:
-    # Aquí podés poner lógica más avanzada si querés
-    keywords = ["recurso", "material", "documento"]
-    if any(k in message.lower() for k in keywords):
-        return "provide_resource"
-    return "general"
+# OPERADOR: clasificar intención antes del modelo
 
-def get_db():
-    # Función para retornar conexión a tu DB
-    # Ejemplo: psycopg2.connect(...)
-    pass
+intent = classify_intent(msg.message)
 
-def build_prompts(state, user_message):
-    base_prompt = f"""
-Sos Aimi, un asistente experto en dar respuestas didácticas y visuales. 
-Respondé de manera clara y completa:
+if intent == "provide_resource":
 
-- Resaltá lo más importante en negrita.
-- Enumerá puntos clave con viñetas.
-- Separá en secciones si hay distintos temas.
-- Al final, incluí un pequeño resumen con lo más relevante.
+state["current_topic"] = "resource"
 
-Pregunta: {user_message}
+# Construir prompt didáctico y visual, incorporando datos del estado y pregunta
+
+base_prompt = f"""
+
+Sos Aimi, un asistente experto en dar respuestas didácticas y visuales. Respondé la siguiente pregunta de manera clara y completa:
+
+Resaltá lo más importante en negrita.
+Enumerá puntos clave con viñetas.
+Separá en secciones si hay distintos temas.
+Al final, incluí un pequeño resumen con lo más relevante.
+Pregunta: {msg.message}
 
 Respuesta:
+
 """
-    system_prompt = f"""Sos Aimi.
-Objetivo: {state['objective']}
-Tema actual: {state['current_topic']}
+
+system_prompt = f"""Sos Aimi. Objetivo: {state['objective']} Tema actual: {state['current_topic']}
 
 Reglas estrictas:
-- No te reinicies.
-- No te presentes otra vez.
-- No preguntes "¿en qué te ayudo?" si el usuario aportó información.
-- Continuá el hilo de la conversación.
-- Respondé de forma directa y útil.
 
+No te reinicies.
+No te presentes otra vez.
+No preguntes "¿en qué te ayudo?" si el usuario aportó información.
+Continuá el hilo de la conversación.
+Respondé de forma directa y útil.
 {base_prompt}
+
 """
-    return system_prompt
 
-@app.post("/chat")
-async def chat(msg: Message):
-    # Validar entrada
-    if not msg.session_id or not msg.message:
-        raise HTTPException(status_code=400, detail="Faltan session_id o message")
+messages = [{"role": "system", "content": system_prompt}]
 
-    # Obtener o crear estado por sesión
-    state = conversation_states.get(msg.session_id)
-    if not state:
-        state = get_initial_state()
-        conversation_states[msg.session_id] = state
+messages.extend(state["history"])
 
-    # Clasificar intención
-    intent = classify_intent(msg.message)
-    if intent == "provide_resource":
-        state["current_topic"] = "resource"
-    else:
-        state["current_topic"] = "general"
+messages.append({"role": "user", "content": msg.message})
 
-    # Construir prompt
-    system_prompt = build_prompts(state, msg.message)
+try:
 
-    # Preparar mensajes para el modelo
-    messages = [{"role": "system", "content": system_prompt}]
-    messages.extend(state["history"])
-    messages.append({"role": "user", "content": msg.message})
+completion = client.chat.completions.create(
 
-    # Llamada al modelo
-    try:
-        completion = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=messages
-        )
-        answer = completion.choices[0].message.content
-    except Exception as e:
-        logging.error(f"Error al generar respuesta: {e}")
-        raise HTTPException(status_code=500, detail="Error al generar respuesta AI")
+model="gpt-4.1-mini",
 
-    # Actualizar historial
-    state["history"].append({"role": "user", "content": msg.message})
-    state["history"].append({"role": "assistant", "content": answer})
-    state["has_introduced"] = True
+messages=messages
 
-    # Guardar en base de datos
-    try:
-        with get_db() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    INSERT INTO interactions (question, answer, session_id, topic)
-                    VALUES (%s, %s, %s, %s)
-                    RETURNING id;
-                    """,
-                    (msg.message, answer, msg.session_id, state["current_topic"])
-                )
-                conn.commit()
-    except Exception as db_e:
-        logging.error(f"Error al guardar en DB: {db_e}")
+)
 
-    return {"answer": answer, "source": "ai"}
+answer = completion.choices[0].message.content
+
+except Exception as e:
+
+raise HTTPException(status_code=500, detail=str(e))
+
+# Actualizar historial del usuario
+
+state["history"].append({"role": "user", "content": msg.message})
+
+state["history"].append({"role": "assistant", "content": answer})
+
+if len(state["history"]) > MAX_HISTORY:
+
+state["history"] = state["history"][-MAX_HISTORY:]
+
+state["has_introduced"] = True
+
+# Guardar interacción
+
+with get_db() as conn:
+
+with conn.cursor() as cur:
+
+cur.execute(
+
+"""
+
+INSERT INTO interactions (question, answer)
+
+VALUES (%s, %s)
+
+RETURNING *;
+
+""",
+
+(msg.message, answer)
+
+)
+
+conn.commit()
+
+return {"answer": answer, "source": "ai"}
+
+
 
 # =========================
 # GET INTERACTIONS
