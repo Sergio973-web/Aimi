@@ -202,18 +202,29 @@ async def vote_verifier(v: Vote):
 
     return {"ok": True}
 
-@app.post("/vote/expert")
-async def vote_expert(v: Vote):
+@app.post("/expert/approve")
+async def expert_approve(v: Vote):
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
                 UPDATE interactions
-                SET expert_votes = array_append(expert_votes, %s),
-                    status = 'expert_approved'
+                SET status = 'stored'
                 WHERE id = %s;
-            """, (v.stars, v.interaction_id))
+            """, (v.interaction_id,))
             conn.commit()
+    return {"ok": True}
 
+
+@app.post("/expert/reject")
+async def expert_reject(v: Vote):
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                UPDATE interactions
+                SET status = 'removed'
+                WHERE id = %s;
+            """, (v.interaction_id,))
+            conn.commit()
     return {"ok": True}
 
 @app.post("/operator/approve")

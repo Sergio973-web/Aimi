@@ -163,16 +163,28 @@ async function loadInteractions() {
 
             const feedback = div.querySelector(".feedback");
 
+            // ✅ APROBAR
             div.querySelector(".approve").onclick = async () => {
-                await voteExpert(i.id, 3);
+                await fetch(`${apiBase}/expert/approve`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ interaction_id: i.id })
+                });
+
                 feedback.textContent = "✔ Aprobado";
                 feedback.style.color = "#27ae60";
                 feedback.classList.add("show");
                 setTimeout(() => div.remove(), 600);
             };
 
+            // ❌ RECHAZAR
             div.querySelector(".reject").onclick = async () => {
-                await voteExpert(i.id, 1);
+                await fetch(`${apiBase}/expert/reject`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ interaction_id: i.id })
+                });
+
                 feedback.textContent = "✖ Rechazado";
                 feedback.style.color = "#c0392b";
                 feedback.classList.add("show");
@@ -183,20 +195,12 @@ async function loadInteractions() {
         });
 
     } catch (e) {
-        console.error(e);
+        console.error("Error cargando experto:", e);
     }
 }
 
-async function voteExpert(id, stars) {
-    await fetch(`${apiBase}/vote/expert`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ interaction_id: id, stars })
-    });
-}
-
+// Inicializar
 loadInteractions();
 </script>
-
 </body>
 </html>
