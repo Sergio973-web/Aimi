@@ -271,3 +271,43 @@ async def operator_approve(a: OperatorApprove):
         raise HTTPException(status_code=500, detail=f"Error al actualizar interacción: {e}")
 
     return {"ok": True}
+
+# =========================
+# GENERAR TOPIC AUTOMÁTICO (OPERADOR)
+# =========================
+
+# Configura tu API Key de OpenAI en tu entorno o en .env
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+class GenerateTopicRequest(BaseModel):
+    prompt: str
+
+@app.post("/openai/generate_topic")
+async def generate_topic(req: GenerateTopicRequest):
+    """
+    Recibe un prompt con la interacción (pregunta + respuesta)
+    y devuelve un topic breve (1-3 palabras) para la conversación.
+    """
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",  # o gpt-4 si tienes acceso
+            messages=[
+                {"role": "system", "content": "Eres un generador de topics breves para interacciones de chat."},
+                {"role": "user", "content": req.prompt}
+            ],
+            temperature=0.5,
+            max_tokens=10  # solo queremos un topic muy breve
+        )
+
+        # Extraer el texto de la respuesta
+        topic_text = response.choices[0].message.content.strip()
+
+        # Limitar a 1-3 palabras (opcional, limpieza extra)
+        topic_words = topic_text.split()
+        topic_clean = " ".join(topic_words[:3])
+
+        return {"topic": topic_clean}
+
+    except Exception as e:
+        print("Error generando topic con OpenAI:", e)
+        return {"topic": "general"}  # fallback
