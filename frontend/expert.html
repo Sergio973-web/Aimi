@@ -165,17 +165,35 @@ async function loadInteractions() {
 
             // ✅ APROBAR
             div.querySelector(".approve").onclick = async () => {
-                await fetch(`${apiBase}/expert/approve`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ interaction_id: i.id })
-                });
+                try {
+                    // Primero pasamos a 'stored' en expert
+                    await fetch(`${apiBase}/expert/approve`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ interaction_id: Number(i.id) }) // asegurarse que sea número
+                    });
 
-                feedback.textContent = "✔ Aprobado";
-                feedback.style.color = "#27ae60";
-                feedback.classList.add("show");
+                    // Luego pasamos a operador con un topic
+                    await fetch(`${apiBase}/operator/approve`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ 
+                            interaction_id: Number(i.id), 
+                            topic: "tema_demo" // o el topic que quieras asignar
+                        })
+                    });
 
-                setTimeout(() => div.remove(), 600);
+                    feedback.textContent = "✔ Aprobado y guardado en operador";
+                    feedback.style.color = "#27ae60";
+                    feedback.classList.add("show");
+                    setTimeout(() => div.remove(), 600);
+
+                } catch (e) {
+                    console.error("Error aprobando interacción:", e);
+                    feedback.textContent = "❌ Error al aprobar";
+                    feedback.style.color = "#c0392b";
+                    feedback.classList.add("show");
+                }
             };
 
             // ❌ RECHAZAR
