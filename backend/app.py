@@ -62,7 +62,7 @@ class Message(BaseModel):
 
 class Vote(BaseModel):
     interaction_id: int
-    stars: int
+    stars: Optional[int] = None 
 
 class Approve(BaseModel):
     interaction_id: int
@@ -211,11 +211,13 @@ async def vote_verifier(v: Vote):
     return {"ok": True}
 
 
-# =========================
+# ==========================
 # EXPERT APPROVE
-# =========================
+# ==========================
 @app.post("/expert/approve")
 async def expert_approve(v: Vote):
+    if not v.interaction_id:
+        raise HTTPException(status_code=400, detail="interaction_id es obligatorio")
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
@@ -224,9 +226,7 @@ async def expert_approve(v: Vote):
                 WHERE id = %s;
             """, (v.interaction_id,))
             conn.commit()
-
     return {"ok": True}
-
 
 # =========================
 # EXPERT REJECT
