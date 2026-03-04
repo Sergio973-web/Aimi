@@ -164,7 +164,7 @@ async function loadInteractions() {
             const feedback = div.querySelector(".feedback");
 
             // ✅ APROBAR
-            div.querySelector(".save").onclick = async () => {
+            div.querySelector(".approve").onclick = async () => {
                 try {
                     // PASAR A EXPERTO
                     const resExpert = await fetch(`${apiBase}/expert/approve`, {
@@ -183,7 +183,7 @@ async function loadInteractions() {
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ 
                             interaction_id: Number(i.id), 
-                            topic: "tema_demo" // topic que quieras
+                            topic: "tema_demo"
                         })
                     });
                     if (!resOperator.ok) {
@@ -204,7 +204,6 @@ async function loadInteractions() {
                     feedback.classList.add("show");
                 }
             };
-
 
             // ❌ RECHAZAR
             div.querySelector(".reject").onclick = async () => {
