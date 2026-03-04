@@ -1,6 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from collections import deque
+import logging
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -12,10 +14,8 @@ from typing import Optional
 # Configuración
 # ==========================
 load_dotenv()
-
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL")
-
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 app = FastAPI(title="Aimi Backend")
@@ -26,6 +26,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ==========================
+# Logging
+# ==========================
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 
 # ==========================
 # DB Connection
@@ -47,7 +52,8 @@ def init_db():
                     verifier_votes INT[] DEFAULT '{}',
                     expert_votes INT[] DEFAULT '{}',
                     status TEXT DEFAULT 'pending',
-                    topic TEXT
+                    topic TEXT,
+                    session_id TEXT
                 );
             """)
             conn.commit()
@@ -61,58 +67,47 @@ class Message(BaseModel):
     session_id: str
     message: str
 
-class Vote(BaseModel):
-    interaction_id: int
-    stars: Optional[int] = None 
-
-class Approve(BaseModel):
-    interaction_id: int
-    topic: str
-
 # ==========================
-# Conversational State (MULTIUSUARIO)
+# Conversational State
 # ==========================
+MAX_HISTORY = 20
 conversation_states = {}
-MAX_HISTORY = 6
 
 def get_initial_state():
     return {
-        "objective": "Asistir al usuario manteniendo coherencia conversacional",
+        "history": deque(maxlen=MAX_HISTORY),
         "current_topic": None,
-        "has_introduced": False,
-        "history": []
+        "objective": "Dar respuestas didácticas y visuales",
+        "has_introduced": False
     }
 
 # ==========================
-# Clasificación de intención (simple)
+# Clasificación de intención
 # ==========================
-def classify_intent(text: str) -> str:
-    t = text.lower()
-    if "http" in t or "github.com" in t:
+def classify_intent(message: str) -> str:
+    keywords = ["recurso", "material", "documento"]
+    if any(k in message.lower() for k in keywords):
         return "provide_resource"
-    if t.startswith("como") or t.startswith("cómo"):
-        return "ask_how"
-    return "continue"
+    return "general"
 
 # ==========================
-# Endpoints
+# Construcción de prompts
 # ==========================
-@app.post("/chat")
-async def chat(msg: Message):
-    # Obtener o crear estado por sesión
-    state = conversation_states.get(msg.session_id)
-    if not state:
-        state = get_initial_state()
-        conversation_states[msg.session_id] = state
+def build_prompts(state, user_message):
+    base_prompt = f"""
+Sos Aimi, un asistente experto en dar respuestas didácticas y visuales. 
+Respondé de manera clara y completa:
 
-    # OPERADOR: clasificar intención antes del modelo
-    intent = classify_intent(msg.message)
-    if intent == "provide_resource":
-        state["current_topic"] = "resource"
+- Resaltá lo más importante en negrita.
+- Enumerá puntos clave con viñetas.
+- Separá en secciones si hay distintos temas.
+- Al final, incluí un pequeño resumen con lo más relevante.
 
-    # Prompt del operador
-    system_prompt = f"""
-Sos Aimi.
+Pregunta: {user_message}
+
+Respuesta:
+"""
+    system_prompt = f"""Sos Aimi.
 Objetivo: {state['objective']}
 Tema actual: {state['current_topic']}
 
@@ -122,12 +117,39 @@ Reglas estrictas:
 - No preguntes "¿en qué te ayudo?" si el usuario aportó información.
 - Continuá el hilo de la conversación.
 - Respondé de forma directa y útil.
-"""
 
+{base_prompt}
+"""
+    return system_prompt
+
+# ==========================
+# Endpoint /chat
+# ==========================
+@app.post("/chat")
+async def chat(msg: Message):
+    # Validar entrada
+    if not msg.session_id or not msg.message:
+        raise HTTPException(status_code=400, detail="Faltan session_id o message")
+
+    # Obtener o crear estado por sesión
+    state = conversation_states.get(msg.session_id)
+    if not state:
+        state = get_initial_state()
+        conversation_states[msg.session_id] = state
+
+    # Clasificar intención
+    intent = classify_intent(msg.message)
+    state["current_topic"] = "resource" if intent == "provide_resource" else "general"
+
+    # Construir prompt
+    system_prompt = build_prompts(state, msg.message)
+
+    # Preparar mensajes para el modelo
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(state["history"])
     messages.append({"role": "user", "content": msg.message})
 
+    # Llamada al modelo
     try:
         completion = client.chat.completions.create(
             model="gpt-4.1-mini",
@@ -135,29 +157,29 @@ Reglas estrictas:
         )
         answer = completion.choices[0].message.content
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logging.error(f"Error al generar respuesta: {e}")
+        raise HTTPException(status_code=500, detail="Error al generar respuesta AI")
 
-    # Actualizar historial del usuario
+    # Actualizar historial
     state["history"].append({"role": "user", "content": msg.message})
     state["history"].append({"role": "assistant", "content": answer})
-
-    if len(state["history"]) > MAX_HISTORY:
-        state["history"] = state["history"][-MAX_HISTORY:]
-
     state["has_introduced"] = True
 
-    # Guardar interacción
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO interactions (question, answer)
-                VALUES (%s, %s)
-                RETURNING *;
-                """,
-                (msg.message, answer)
-            )
-            conn.commit()
+    # Guardar en base de datos
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO interactions (question, answer, session_id, topic)
+                    VALUES (%s, %s, %s, %s)
+                    RETURNING id;
+                    """,
+                    (msg.message, answer, msg.session_id, state["current_topic"])
+                )
+                conn.commit()
+    except Exception as db_e:
+        logging.error(f"Error al guardar en DB: {db_e}")
 
     return {"answer": answer, "source": "ai"}
 
