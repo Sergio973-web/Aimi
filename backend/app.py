@@ -223,9 +223,9 @@ async def expert_approve(v: Vote):
         with conn.cursor() as cur:
             cur.execute("""
                 UPDATE interactions
-                SET status = 'stored'
+                SET status = 'operator_pending'
                 WHERE id = %s;
-            """, (v.interaction_id,))
+            """, (v.interaction_id,))                        
             conn.commit()
     return {"ok": True}
 
