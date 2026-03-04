@@ -58,6 +58,15 @@
     .message li {
         margin-bottom: 5px;
     }
+    .message h4 {
+        margin: 12px 0 6px 0;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+    .message strong {
+        font-weight: 700;
+    }
     @keyframes fadeIn {
         from {opacity:0; transform: translateY(10px);}
         to {opacity:1; transform: translateY(0);}
@@ -99,13 +108,11 @@
         .message { max-width: 90%; }
         header { font-size: 1.5rem; }
     }
-    /* === Aimi pensando === */
+    /* Aimi pensando */
     .thinking {
         font-style: italic;
         opacity: 0.8;
     }
-
-    /* Barra de progreso */
     .progress-container {
         width: 100%;
         background: #e0e0e0;
@@ -113,14 +120,12 @@
         margin-top: 8px;
         overflow: hidden;
     }
-
     .progress-bar {
         height: 8px;
         width: 0%;
         background: linear-gradient(90deg, #4a90e2, #50e3c2);
         animation: loading 1.5s infinite;
     }
-
     @keyframes loading {
         0% { width: 0%; }
         50% { width: 80%; }
@@ -155,28 +160,55 @@ if (!sessionId) {
 }
 
 /* ==========================
-   Formateo de texto (listas)
+   Formateo de texto (listas, negritas y subtítulos)
    ========================== */
 function formatText(text){
-    const lines = text.split("\n").map(line => line.trim());
-    let formatted = lines.map(line => {
-        if(line.match(/^\d+\./)){
-            return `<li>${line.replace(/^\d+\.\s*/, '')}</li>`;
-        } else if(line.match(/^[-*]\s/)){
-            return `<li>${line.replace(/^[-*]\s*/, '')}</li>`;
-        } else {
-            return line;
-        }
-    }).join("\n");
+    // Escapar HTML
+    text = text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 
-    if(formatted.includes("<li>")){
-        if(text.match(/^\d+\./)) {
-            formatted = `<ol>${formatted}</ol>`;
+    // Convertir negritas: **texto** → <strong>texto</strong>
+    text = text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+    // Subtítulos: 🔹 Título → <h4>Título</h4>
+    text = text.replace(/^🔹\s*(.+)$/gm, "<h4>$1</h4>");
+
+    // Convertir viñetas
+    const lines = text.split("\n").map(line => line.trim());
+    let formattedLines = lines.map(line => {
+        if(line.match(/^(\-|\*)\s+/)){
+            return `<li>${line.replace(/^(\-|\*)\s+/, '')}</li>`;
+        } else if(line.match(/^\d+\.\s+/)){
+            return `<li>${line.replace(/^\d+\.\s+/, '')}</li>`;
+        } else if(line.match(/^<h4>/)) {
+            return line;
         } else {
-            formatted = `<ul>${formatted}</ul>`;
+            return `<p>${line}</p>`;
         }
-    }
-    return formatted;
+    });
+
+    // Agrupar <li> en <ul> u <ol>
+    let html = "";
+    let inList = false;
+    let listType = "ul";
+    formattedLines.forEach(line => {
+        if(line.startsWith("<li>")){
+            if(!inList){
+                listType = "ul"; // todas las viñetas con - o * → ul
+                html += `<${listType}>`;
+                inList = true;
+            }
+            html += line;
+        } else {
+            if(inList){
+                html += `</${listType}>`;
+                inList = false;
+            }
+            html += line;
+        }
+    });
+    if(inList) html += `</${listType}>`;
+
+    return html;
 }
 
 /* ==========================
@@ -206,6 +238,7 @@ function addThinking(){
     chatContainer.scrollTop = chatContainer.scrollHeight;
     return div;
 }
+
 /* ==========================
    Enviar mensaje
    ========================== */
@@ -216,7 +249,7 @@ async function sendMessage(){
     addMessage(msg, "user");
     input.value = "";
 
-    // 👉 mostrar pensando
+    // Mostrar pensando
     const thinkingEl = addThinking();
 
     try {
@@ -231,9 +264,9 @@ async function sendMessage(){
 
         const data = await res.json();
 
-        // 👉 quitar pensando
         thinkingEl.remove();
 
+        // Mostrar respuesta formateada
         addMessage(data.answer || "Error: sin respuesta", "aimi");
 
     } catch(e){
