@@ -160,23 +160,33 @@ Reglas estrictas:
 
     return {"answer": answer, "source": "ai"}
 
+# =========================
+# GET INTERACTIONS
+# =========================
 @app.get("/interactions")
 async def get_interactions():
     with get_db() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM interactions ORDER BY id DESC;")
+            cur.execute("""
+                SELECT *
+                FROM interactions
+                ORDER BY id DESC;
+            """)
             return cur.fetchall()
 
+
+# =========================
+# VERIFIER VOTING
+# =========================
 @app.post("/vote/verifier")
 async def vote_verifier(v: Vote):
     with get_db() as conn:
         with conn.cursor() as cur:
 
             if v.stars == 1:
-                # ❌ eliminar completamente del flujo
+                # ❌ borrar definitivamente
                 cur.execute("""
-                    UPDATE interactions
-                    SET status = 'removed'
+                    DELETE FROM interactions
                     WHERE id = %s;
                 """, (v.interaction_id,))
 
@@ -184,24 +194,26 @@ async def vote_verifier(v: Vote):
                 # 🔄 sigue en verificador
                 cur.execute("""
                     UPDATE interactions
-                    SET verifier_votes = array_append(verifier_votes, %s),
-                        status = 'pending'
+                    SET status = 'pending'
                     WHERE id = %s;
-                """, (v.stars, v.interaction_id))
+                """, (v.interaction_id,))
 
             elif v.stars == 3:
                 # ➡️ pasa a experto
                 cur.execute("""
                     UPDATE interactions
-                    SET verifier_votes = array_append(verifier_votes, %s),
-                        status = 'expert_pending'
+                    SET status = 'expert_pending'
                     WHERE id = %s;
-                """, (v.stars, v.interaction_id))
+                """, (v.interaction_id,))
 
             conn.commit()
 
     return {"ok": True}
 
+
+# =========================
+# EXPERT APPROVE
+# =========================
 @app.post("/expert/approve")
 async def expert_approve(v: Vote):
     with get_db() as conn:
@@ -212,9 +224,13 @@ async def expert_approve(v: Vote):
                 WHERE id = %s;
             """, (v.interaction_id,))
             conn.commit()
+
     return {"ok": True}
 
 
+# =========================
+# EXPERT REJECT
+# =========================
 @app.post("/expert/reject")
 async def expert_reject(v: Vote):
     with get_db() as conn:
@@ -225,8 +241,13 @@ async def expert_reject(v: Vote):
                 WHERE id = %s;
             """, (v.interaction_id,))
             conn.commit()
+
     return {"ok": True}
 
+
+# =========================
+# OPERATOR APPROVE + TOPIC
+# =========================
 @app.post("/operator/approve")
 async def approve(a: Approve):
     with get_db() as conn:
@@ -238,4 +259,5 @@ async def approve(a: Approve):
                 WHERE id = %s;
             """, (a.topic, a.interaction_id))
             conn.commit()
+
     return {"stored": True}

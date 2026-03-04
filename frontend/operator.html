@@ -79,36 +79,50 @@ const container = document.getElementById("interactions");
 
 async function loadInteractions() {
     container.innerHTML = "";
+
     try {
         const res = await fetch(`${apiBase}/interactions`);
         const data = await res.json();
+
         data.forEach(i => {
+            if (i.status !== "stored") return;
+
             const div = document.createElement("div");
             div.className = "interaction";
+
             div.innerHTML = `
                 <div class="question"><strong>P:</strong> ${i.question}</div>
                 <div class="answer"><strong>R:</strong> ${i.answer}</div>
+
                 <div class="approve">
-                    <button onclick="approve(${i.id},'tema_demo')">Guardar ✅</button>
+                    <button class="save">Guardar en memoria ✅</button>
                 </div>
             `;
+
+            div.querySelector(".save").onclick = async () => {
+                await fetch(`${apiBase}/operator/approve`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        interaction_id: i.id,
+                        topic: "general"
+                    })
+                });
+
+                div.remove();
+            };
+
             container.appendChild(div);
         });
-    } catch(e){ console.error(e); }
+
+    } catch (e) {
+        console.error("Error cargando operador:", e);
+    }
 }
 
-async function approve(id, topic){
-    try {
-        await fetch(`${apiBase}/operator/approve`, {
-            method:"POST",
-            headers: {"Content-Type":"application/json"},
-            body: JSON.stringify({interaction_id:id, topic})
-        });
-        loadInteractions();
-    } catch(e){ console.error(e); }
-}
-
+// Inicializar
 loadInteractions();
 </script>
+
 </body>
 </html>

@@ -174,6 +174,7 @@ async function loadInteractions() {
                 feedback.textContent = "✔ Aprobado";
                 feedback.style.color = "#27ae60";
                 feedback.classList.add("show");
+
                 setTimeout(() => div.remove(), 600);
             };
 
@@ -188,6 +189,7 @@ async function loadInteractions() {
                 feedback.textContent = "✖ Rechazado";
                 feedback.style.color = "#c0392b";
                 feedback.classList.add("show");
+
                 setTimeout(() => div.remove(), 600);
             };
 
@@ -195,11 +197,11 @@ async function loadInteractions() {
         });
 
     } catch (e) {
-        console.error("Error cargando experto:", e);
+        console.error("Error cargando panel experto:", e);
     }
 }
 
-// Inicializar
+// Cargar al iniciar
 loadInteractions();
 </script>
 </body>
