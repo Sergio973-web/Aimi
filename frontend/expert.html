@@ -166,22 +166,28 @@ async function loadInteractions() {
             // ✅ APROBAR
             div.querySelector(".approve").onclick = async () => {
                 try {
+                    const interactionId = Number(i.id);
+
                     // Primero pasamos a 'stored' en expert
-                    await fetch(`${apiBase}/expert/approve`, {
+                    const expertRes = await fetch(`${apiBase}/expert/approve`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ interaction_id: Number(i.id) }) // asegurarse que sea número
+                        body: JSON.stringify({ interaction_id: interactionId })
                     });
 
+                    if (!expertRes.ok) throw new Error("Error en expert/approve");
+
                     // Luego pasamos a operador con un topic
-                    await fetch(`${apiBase}/operator/approve`, {
+                    const operatorRes = await fetch(`${apiBase}/operator/approve`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ 
-                            interaction_id: Number(i.id), 
+                            interaction_id: interactionId, 
                             topic: "tema_demo" // o el topic que quieras asignar
                         })
                     });
+
+                    if (!operatorRes.ok) throw new Error("Error en operator/approve");
 
                     feedback.textContent = "✔ Aprobado y guardado en operador";
                     feedback.style.color = "#27ae60";
@@ -198,17 +204,28 @@ async function loadInteractions() {
 
             // ❌ RECHAZAR
             div.querySelector(".reject").onclick = async () => {
-                await fetch(`${apiBase}/expert/reject`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ interaction_id: i.id })
-                });
+                try {
+                    const interactionId = Number(i.id);
+                    const res = await fetch(`${apiBase}/expert/reject`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ interaction_id: interactionId })
+                    });
 
-                feedback.textContent = "✖ Rechazado";
-                feedback.style.color = "#c0392b";
-                feedback.classList.add("show");
+                    if (!res.ok) throw new Error("Error en expert/reject");
 
-                setTimeout(() => div.remove(), 600);
+                    feedback.textContent = "✖ Rechazado";
+                    feedback.style.color = "#c0392b";
+                    feedback.classList.add("show");
+
+                    setTimeout(() => div.remove(), 600);
+
+                } catch (e) {
+                    console.error("Error rechazando interacción:", e);
+                    feedback.textContent = "❌ Error al rechazar";
+                    feedback.style.color = "#c0392b";
+                    feedback.classList.add("show");
+                }
             };
 
             container.appendChild(div);
@@ -222,5 +239,6 @@ async function loadInteractions() {
 // Cargar al iniciar
 loadInteractions();
 </script>
+
 </body>
 </html>
