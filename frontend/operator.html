@@ -85,7 +85,8 @@ async function loadInteractions() {
         const data = await res.json();
 
         data.forEach(i => {
-            if (i.status !== "stored") return;
+            // Solo mostrar las interacciones que vienen del Experto y esperan al Operador
+            if (i.status !== "operator_pending") return;
 
             const div = document.createElement("div");
             div.className = "interaction";
@@ -99,17 +100,38 @@ async function loadInteractions() {
                 </div>
             `;
 
-            div.querySelector(".save").onclick = async () => {
-                await fetch(`${apiBase}/operator/approve`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        interaction_id: i.id,
-                        topic: "general"
-                    })
-                });
+            const feedback = document.createElement("div");
+            feedback.className = "feedback";
+            div.appendChild(feedback);
 
-                div.remove();
+            div.querySelector(".save").onclick = async () => {
+                try {
+                    const resOperator = await fetch(`${apiBase}/operator/approve`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            interaction_id: Number(i.id),
+                            topic: "general"
+                        })
+                    });
+
+                    if (!resOperator.ok) {
+                        const err = await resOperator.json();
+                        throw new Error(err.detail || resOperator.statusText);
+                    }
+
+                    feedback.textContent = "✔ Guardado en memoria ✅";
+                    feedback.style.color = "#27ae60";
+                    feedback.classList.add("show");
+
+                    setTimeout(() => div.remove(), 600);
+
+                } catch (e) {
+                    console.error("Error guardando en operador:", e);
+                    feedback.textContent = "❌ Error al guardar";
+                    feedback.style.color = "#c0392b";
+                    feedback.classList.add("show");
+                }
             };
 
             container.appendChild(div);

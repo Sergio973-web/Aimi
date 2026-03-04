@@ -166,45 +166,33 @@ async function loadInteractions() {
             // ✅ APROBAR
             div.querySelector(".approve").onclick = async () => {
                 try {
-                    // PASAR A EXPERTO
+                    // ✅ PASAR A OPERADOR (solo actualizar status a operator_pending)
                     const resExpert = await fetch(`${apiBase}/expert/approve`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ interaction_id: Number(i.id) })
                     });
+
                     if (!resExpert.ok) {
                         const err = await resExpert.json();
                         throw new Error(err.detail || resExpert.statusText);
                     }
 
-                    // PASAR A OPERADOR
-                    const resOperator = await fetch(`${apiBase}/operator/approve`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ 
-                            interaction_id: Number(i.id), 
-                            topic: "tema_demo"
-                        })
-                    });
-                    if (!resOperator.ok) {
-                        const err = await resOperator.json();
-                        throw new Error(err.detail || resOperator.statusText);
-                    }
-
-                    feedback.textContent = "✔ Aprobado y guardado en operador";
+                    feedback.textContent = "✔ Aprobado y enviado a operador";
                     feedback.style.color = "#27ae60";
                     feedback.classList.add("show");
 
+                    // Quitar la tarjeta del panel Experto
                     setTimeout(() => div.remove(), 600);
 
                 } catch (e) {
-                    console.error("Error aprobando interacción:", e);
+                    console.error("Error aprobando en experto:", e);
                     feedback.textContent = "❌ Error al aprobar";
                     feedback.style.color = "#c0392b";
                     feedback.classList.add("show");
                 }
             };
-
+            
             // ❌ RECHAZAR
             div.querySelector(".reject").onclick = async () => {
                 try {
