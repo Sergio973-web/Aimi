@@ -142,11 +142,12 @@ async function loadInteractions() {
                         feedback.classList.add("show");
                         setTimeout(() => feedback.classList.remove("show"), 2000);
                     } else if(stars === 3) {
-                        await fetch(`${apiBase}/vote/expert`, {
+                        await fetch(`${apiBase}/vote/verifier`, {  // ✅ corregido
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ interaction_id: id, stars })
                         });
+
                         feedback.textContent = "✅ Pasó al experto";
                         div.remove(); // eliminar del verificador
                     }
