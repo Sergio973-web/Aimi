@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from typing import Optional
 
 # ==========================
 # Configuración
