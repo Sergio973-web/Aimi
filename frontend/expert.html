@@ -164,20 +164,21 @@ async function loadInteractions() {
             const feedback = div.querySelector(".feedback");
 
             // ✅ APROBAR
-            // ---------------------------
-            // BOTÓN APROBAR EXPERTO + OPERADOR
-            // ---------------------------
-            div.querySelector(".approve").onclick = async () => {
+            div.querySelector(".save").onclick = async () => {
                 try {
-                    // PASAR A EXPERTO (solo interaction_id)
-                    await fetch(`${apiBase}/expert/approve`, {
+                    // PASAR A EXPERTO
+                    const resExpert = await fetch(`${apiBase}/expert/approve`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ interaction_id: Number(i.id) })
                     });
+                    if (!resExpert.ok) {
+                        const err = await resExpert.json();
+                        throw new Error(err.detail || resExpert.statusText);
+                    }
 
-                    // PASAR A OPERADOR (con topic)
-                    await fetch(`${apiBase}/operator/approve`, {
+                    // PASAR A OPERADOR
+                    const resOperator = await fetch(`${apiBase}/operator/approve`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ 
@@ -185,6 +186,10 @@ async function loadInteractions() {
                             topic: "tema_demo" // topic que quieras
                         })
                     });
+                    if (!resOperator.ok) {
+                        const err = await resOperator.json();
+                        throw new Error(err.detail || resOperator.statusText);
+                    }
 
                     feedback.textContent = "✔ Aprobado y guardado en operador";
                     feedback.style.color = "#27ae60";
@@ -199,6 +204,7 @@ async function loadInteractions() {
                     feedback.classList.add("show");
                 }
             };
+
 
             // ❌ RECHAZAR
             div.querySelector(".reject").onclick = async () => {

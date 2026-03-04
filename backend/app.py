@@ -249,16 +249,25 @@ async def expert_reject(v: Vote):
 # =========================
 # OPERATOR APPROVE + TOPIC
 # =========================
-@app.post("/operator/approve")
-async def approve(a: Approve):
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                UPDATE interactions
-                SET status = 'stored',
-                    topic = %s
-                WHERE id = %s;
-            """, (a.topic, a.interaction_id))
-            conn.commit()
+class OperatorApprove(BaseModel):
+    interaction_id: int
+    topic: str
 
-    return {"stored": True}
+@app.post("/operator/approve")
+async def operator_approve(a: OperatorApprove):
+    if not a.interaction_id or not a.topic:
+        raise HTTPException(status_code=400, detail="interaction_id y topic son obligatorios")
+    
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE interactions
+                    SET status = 'stored', topic = %s
+                    WHERE id = %s;
+                """, (a.topic, a.interaction_id))
+                conn.commit()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al actualizar interacción: {e}")
+
+    return {"ok": True}
