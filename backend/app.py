@@ -9,6 +9,7 @@ from openai import OpenAI
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from typing import Optional
+from difflib import SequenceMatcher
 
 # ==========================
 # Configuración
@@ -67,6 +68,10 @@ class Message(BaseModel):
     session_id: str
     message: str
 
+class Vote(BaseModel):
+    interaction_id: int
+    stars: Optional[int] = None 
+
 # ==========================
 # Conversational State
 # ==========================
@@ -123,33 +128,64 @@ Reglas estrictas:
     return system_prompt
 
 # ==========================
+# Detección de preguntas similares
+# ==========================
+def is_similar(a: str, b: str, threshold: float = 0.8) -> bool:
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio() >= threshold
+
+def save_interaction_unique(session_id: str, question: str, answer: str, topic: str):
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                # Traer últimas interacciones de esta sesión
+                cur.execute(
+                    "SELECT id, question FROM interactions WHERE session_id = %s ORDER BY id DESC LIMIT 20;",
+                    (session_id,)
+                )
+                rows = cur.fetchall()
+
+                # Revisar similitud
+                for row in rows:
+                    if is_similar(question, row['question']):
+                        logging.info(f"Pregunta similar detectada, se omite guardado: {question}")
+                        return row['id']  # devolver id existente
+
+                # Guardar nueva interacción
+                cur.execute(
+                    """
+                    INSERT INTO interactions (question, answer, session_id, topic)
+                    VALUES (%s, %s, %s, %s)
+                    RETURNING id;
+                    """,
+                    (question, answer, session_id, topic)
+                )
+                conn.commit()
+                return cur.fetchone()['id']
+    except Exception as e:
+        logging.error(f"Error al guardar interacción: {e}")
+        return None
+
+# ==========================
 # Endpoint /chat
 # ==========================
 @app.post("/chat")
 async def chat(msg: Message):
-    # Validar entrada
     if not msg.session_id or not msg.message:
         raise HTTPException(status_code=400, detail="Faltan session_id o message")
 
-    # Obtener o crear estado por sesión
     state = conversation_states.get(msg.session_id)
     if not state:
         state = get_initial_state()
         conversation_states[msg.session_id] = state
 
-    # Clasificar intención
     intent = classify_intent(msg.message)
     state["current_topic"] = "resource" if intent == "provide_resource" else "general"
 
-    # Construir prompt
     system_prompt = build_prompts(state, msg.message)
-
-    # Preparar mensajes para el modelo
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(state["history"])
     messages.append({"role": "user", "content": msg.message})
 
-    # Llamada al modelo
     try:
         completion = client.chat.completions.create(
             model="gpt-4.1-mini",
@@ -165,27 +201,19 @@ async def chat(msg: Message):
     state["history"].append({"role": "assistant", "content": answer})
     state["has_introduced"] = True
 
-    # Guardar en base de datos
-    try:
-        with get_db() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    INSERT INTO interactions (question, answer, session_id, topic)
-                    VALUES (%s, %s, %s, %s)
-                    RETURNING id;
-                    """,
-                    (msg.message, answer, msg.session_id, state["current_topic"])
-                )
-                conn.commit()
-    except Exception as db_e:
-        logging.error(f"Error al guardar en DB: {db_e}")
+    # Guardado inteligente
+    interaction_id = save_interaction_unique(
+        session_id=msg.session_id,
+        question=msg.message,
+        answer=answer,
+        topic=state["current_topic"]
+    )
 
-    return {"answer": answer, "source": "ai"}
+    return {"answer": answer, "source": "ai", "interaction_id": interaction_id}
 
-# =========================
+# ==========================
 # GET INTERACTIONS
-# =========================
+# ==========================
 @app.get("/interactions")
 async def get_interactions():
     with get_db() as conn:
