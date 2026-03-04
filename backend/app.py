@@ -271,20 +271,3 @@ async def operator_approve(a: OperatorApprove):
         raise HTTPException(status_code=500, detail=f"Error al actualizar interacción: {e}")
 
     return {"ok": True}
-
-
-
-@app.post("/migrate/add_topic_column")
-async def add_topic_column():
-    try:
-        with get_db() as conn:
-            with conn.cursor() as cur:
-                # Esto agrega la columna si no existe
-                cur.execute("""
-                    ALTER TABLE interactions
-                    ADD COLUMN IF NOT EXISTS topic TEXT;
-                """)
-                conn.commit()
-        return {"ok": True, "msg": "Columna 'topic' agregada correctamente"}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}

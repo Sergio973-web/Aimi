@@ -136,29 +136,6 @@
 const apiBase = "https://aimi-backend-l2u4.onrender.com";
 const container = document.getElementById("interactions");
 
-
-
-// Crear columna topic si no existe
-async function ensureTopicColumn() {
-    try {
-        const res = await fetch(`${apiBase}/migrate/add_topic_column`, {
-            method: "POST"
-        });
-        const data = await res.json();
-        if (data.ok) {
-            console.log("✅ Columna 'topic' lista");
-        } else {
-            console.warn("⚠ No se pudo crear columna 'topic':", data.error);
-        }
-    } catch (e) {
-        console.error("Error creando columna 'topic':", e);
-    }
-}
-
-
-
-
-
 async function loadInteractions() {
     container.innerHTML = "";
 
@@ -261,12 +238,6 @@ async function loadInteractions() {
         console.error("Error cargando panel experto:", e);
     }
 }
-
-
-// Cargar al iniciar
-ensureTopicColumn().then(() => loadInteractions());
-
-
 
 // Cargar al iniciar
 loadInteractions();
