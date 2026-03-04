@@ -275,6 +275,7 @@ async def operator_approve(a: OperatorApprove):
 # =========================
 # GENERAR TOPIC AUTOMÁTICO (OPERADOR)
 # =========================
+import openai
 
 # Configura tu API Key de OpenAI en tu entorno o en .env
 openai.api_key = os.getenv("OPENAI_API_KEY")
