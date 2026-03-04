@@ -2,75 +2,134 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Aimi Panel Experto</title>
+<title>Panel Experto - Aimi</title>
+
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
 <style>
+    * { box-sizing: border-box; }
+
     body {
+        margin: 0;
         font-family: 'Roboto', sans-serif;
         background: #f4f7fa;
-        margin: 0;
+        min-height: 100vh;
         display: flex;
         flex-direction: column;
-        height: 100vh;
     }
+
     header {
         background: linear-gradient(90deg, #ff6a00, #ee0979);
-        color: white;
+        color: #fff;
         padding: 20px;
         text-align: center;
         font-size: 2rem;
         font-weight: 700;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
+
     main {
-        flex: 1;
-        padding: 20px;
-        overflow-y: auto;
+        max-width: 900px;
+        width: 100%;
+        margin: 30px auto;
+        padding: 0 15px;
         display: flex;
         flex-direction: column;
-        gap: 15px;
+        gap: 20px;
     }
+
     .interaction {
         background: #fff;
-        border-radius: 15px;
-        padding: 15px 20px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        border-radius: 18px;
+        padding: 20px 22px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
         animation: fadeIn 0.3s ease;
+        position: relative;
     }
+
+    .interaction:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 16px 35px rgba(0,0,0,0.12);
+        transition: all 0.3s ease;
+    }
+
     .question {
-        font-weight: 500;
+        font-weight: 700;
         color: #333;
+        font-size: 1.05rem;
     }
+
     .answer {
-        margin-top: 8px;
+        margin-top: 10px;
         color: #555;
+        line-height: 1.5;
+        font-size: 1rem;
     }
-    .votes {
-        margin-top: 12px;
+
+    .actions {
+        margin-top: 16px;
         display: flex;
-        gap: 8px;
+        gap: 12px;
     }
-    .votes button {
-        background: linear-gradient(90deg, #ff6a00, #ee0979);
+
+    .actions button {
+        flex: 1;
         border: none;
-        color: white;
-        padding: 6px 12px;
-        border-radius: 8px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        font-size: 0.95rem;
+        font-weight: 700;
         cursor: pointer;
-        transition: transform 0.2s;
+        transition: transform 0.2s, box-shadow 0.2s;
     }
-    .votes button:hover { transform: scale(1.05); }
+
+    .approve {
+        background: linear-gradient(90deg, #2ecc71, #27ae60);
+        color: #fff;
+    }
+
+    .reject {
+        background: linear-gradient(90deg, #e74c3c, #c0392b);
+        color: #fff;
+    }
+
+    .actions button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+    }
+
+    .feedback {
+        position: absolute;
+        top: 14px;
+        right: 18px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        opacity: 0;
+        transform: translateY(5px);
+        transition: opacity 0.3s, transform 0.3s;
+    }
+
+    .feedback.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
     @keyframes fadeIn {
-        from {opacity:0; transform: translateY(10px);}
-        to {opacity:1; transform: translateY(0);}
+        from { opacity: 0; transform: translateY(10px); }
+        to   { opacity: 1; transform: translateY(0); }
     }
-    @media(max-width: 600px){
+
+    @media (max-width: 600px) {
         header { font-size: 1.5rem; }
+        .actions { flex-direction: column; }
     }
 </style>
 </head>
+
 <body>
-<header>Aimi Panel Experto</header>
+
+<header>Panel Experto · Aimi</header>
+
 <main id="interactions"></main>
 
 <script>
@@ -79,38 +138,65 @@ const container = document.getElementById("interactions");
 
 async function loadInteractions() {
     container.innerHTML = "";
+
     try {
         const res = await fetch(`${apiBase}/interactions`);
         const data = await res.json();
+
         data.forEach(i => {
+            if (i.status !== "expert_pending") return;
+
             const div = document.createElement("div");
             div.className = "interaction";
+
             div.innerHTML = `
-                <div class="question"><strong>P:</strong> ${i.question}</div>
-                <div class="answer"><strong>R:</strong> ${i.answer}</div>
-                <div class="votes">
-                    <button onclick="voteExpert(${i.id},1)">⭐</button>
-                    <button onclick="voteExpert(${i.id},2)">⭐⭐</button>
-                    <button onclick="voteExpert(${i.id},3)">⭐⭐⭐</button>
+                <div class="question">P: ${i.question}</div>
+                <div class="answer">R: ${i.answer}</div>
+
+                <div class="actions">
+                    <button class="reject">❌ Rechazar</button>
+                    <button class="approve">✅ Aprobar</button>
                 </div>
+
+                <div class="feedback"></div>
             `;
+
+            const feedback = div.querySelector(".feedback");
+
+            div.querySelector(".approve").onclick = async () => {
+                await voteExpert(i.id, 3);
+                feedback.textContent = "✔ Aprobado";
+                feedback.style.color = "#27ae60";
+                feedback.classList.add("show");
+                setTimeout(() => div.remove(), 600);
+            };
+
+            div.querySelector(".reject").onclick = async () => {
+                await voteExpert(i.id, 1);
+                feedback.textContent = "✖ Rechazado";
+                feedback.style.color = "#c0392b";
+                feedback.classList.add("show");
+                setTimeout(() => div.remove(), 600);
+            };
+
             container.appendChild(div);
         });
-    } catch(e) { console.error(e); }
+
+    } catch (e) {
+        console.error(e);
+    }
 }
 
-async function voteExpert(id, stars){
-    try {
-        await fetch(`${apiBase}/vote/expert`, {
-            method:"POST",
-            headers: {"Content-Type":"application/json"},
-            body: JSON.stringify({interaction_id:id, stars})
-        });
-        loadInteractions();
-    } catch(e){ console.error(e); }
+async function voteExpert(id, stars) {
+    await fetch(`${apiBase}/vote/expert`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ interaction_id: id, stars })
+    });
 }
 
 loadInteractions();
 </script>
+
 </body>
 </html>

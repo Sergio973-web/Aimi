@@ -171,20 +171,35 @@ async def get_interactions():
 async def vote_verifier(v: Vote):
     with get_db() as conn:
         with conn.cursor() as cur:
+
             if v.stars == 1:
+                # ❌ eliminar completamente del flujo
                 cur.execute("""
                     UPDATE interactions
                     SET status = 'removed'
                     WHERE id = %s;
                 """, (v.interaction_id,))
+
             elif v.stars == 2:
+                # 🔄 sigue en verificador
                 cur.execute("""
                     UPDATE interactions
                     SET verifier_votes = array_append(verifier_votes, %s),
-                        status = 'verified'
+                        status = 'pending'
                     WHERE id = %s;
                 """, (v.stars, v.interaction_id))
+
+            elif v.stars == 3:
+                # ➡️ pasa a experto
+                cur.execute("""
+                    UPDATE interactions
+                    SET verifier_votes = array_append(verifier_votes, %s),
+                        status = 'expert_pending'
+                    WHERE id = %s;
+                """, (v.stars, v.interaction_id))
+
             conn.commit()
+
     return {"ok": True}
 
 @app.post("/vote/expert")
@@ -198,6 +213,7 @@ async def vote_expert(v: Vote):
                 WHERE id = %s;
             """, (v.stars, v.interaction_id))
             conn.commit()
+
     return {"ok": True}
 
 @app.post("/operator/approve")
