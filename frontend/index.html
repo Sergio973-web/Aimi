@@ -126,6 +126,11 @@ button {
 50%{width:80%}
 100%{width:0}
 }
+
+pre {
+    white-space: pre-wrap;  /* respeta saltos de línea y sangría */
+    word-wrap: break-word;  /* evita que se salga del contenedor */
+}
 </style>
 </head>
 
@@ -135,9 +140,14 @@ button {
 
 <main id="chat"></main>
 
-<footer>
-<textarea id="userInput" placeholder="Escribí tu mensaje..." rows="1" style="flex:1; padding:12px; border-radius:25px; border:1px solid #ccc; resize:none;"></textarea>
-<button id="sendBtn">Enviar</button>
+<footer style="display:flex; gap:10px; padding:10px 20px; background:#fff;">
+  <textarea 
+    id="userInput" 
+    placeholder="Escribí tu mensaje..." 
+    rows="1" 
+    style="flex:1; padding:12px; border-radius:25px; border:1px solid #ccc; resize:none; overflow:hidden;"
+  ></textarea>
+  <button id="sendBtn">Enviar</button>
 </footer>
 
 <script>
@@ -182,20 +192,22 @@ return `<pre><code class="language-${lang||""}">${code}</code></pre>`
 DETECTAR CÓDIGO SIMPLE
 ========================= */
 if(
-  (text.includes("def ") || text.includes("return ") || text.includes("print(")) ||
-  (text.includes("console.log("))
+  text.includes("def ") ||
+  text.includes("return ") ||
+  text.includes("print(") ||
+  text.includes("console.log(")
 ){
   if(!text.includes("<pre>")){
-    // Respetar saltos de línea
+    // Escapar HTML
     const escapedText = text
       .replace(/&/g,"&amp;")
       .replace(/</g,"&lt;")
       .replace(/>/g,"&gt;");
 
-    text = `<pre><code class="language-python">${escapedText}</code></pre>`;
+    // Agregar clase para que respete saltos y sangría
+    text = `<pre style="white-space: pre-wrap;"><code class="language-python">${escapedText}</code></pre>`;
   }
 }
-
 /* =========================
 NEGRITAS
 ========================= */
@@ -332,51 +344,59 @@ ENVIAR MENSAJE
 ========================== */
 
 async function sendMessage(){
+    const msg = input.value.trim()
+    if(!msg) return
 
-const msg=input.value.trim()
+    addMessage(msg,"user")
+    
+    input.value = ""             // limpiar textarea
+    autoResizeTextarea()         // reajustar altura
 
-if(!msg) return
-
-addMessage(msg,"user")
-
-input.value=""
-
-const thinking=addThinking()
-
-try{
-
-const res=await fetch(`${apiBase}/chat`,{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({
-session_id:sessionId,
-message:msg
-})
-})
-
-const data=await res.json()
-
-thinking.remove()
-
-addMessage(data.answer || "Sin respuesta","aimi")
-
-}catch(e){
-
-thinking.remove()
-
-addMessage("Error conectando con servidor","aimi")
-
+    const thinking = addThinking()
+    
+    try{
+        const res = await fetch(`${apiBase}/chat`,{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({session_id:sessionId, message:msg})
+        })
+        const data = await res.json()
+        thinking.remove()
+        addMessage(data.answer || "Sin respuesta","aimi")
+    } catch(e){
+        thinking.remove()
+        addMessage("Error conectando con servidor","aimi")
+    }
 }
-
-}
-
 
 button.onclick=sendMessage
 
+// Función para auto-ajustar altura del textarea
+function autoResizeTextarea() {
+    input.style.height = 'auto';              // reset
+    input.style.height = input.scrollHeight + 'px'; // ajustar a contenido
+}
+
+// Detectar Enter y Shift+Enter
 input.addEventListener("keydown", e => {
-    if (e.key === "Enter" && !e.shiftKey) {
-        // Solo Enter sin Shift → enviar mensaje
-        e.preventDefault(); // evita salto de línea
+    if (e.key === "Enter") {
+        if (!e.shiftKey) {
+            e.preventDefault(); // evita salto de línea normal
+            sendMessage();      // enviar mensaje
+        }
+        // Si Shift+Enter, deja que haga salto de línea natural
+    }
+});
+
+// Ajustar altura mientras se escribe
+input.addEventListener("input", autoResizeTextarea);
+
+// Inicializar altura correcta
+autoResizeTextarea();
+
+// Botón de envío
+button.addEventListener("click", () => {
+    if (input.value.trim() !== "") {
         sendMessage();
     }
 });
