@@ -3,286 +3,350 @@
 <head>
 <meta charset="UTF-8">
 <title>Aimi Chat</title>
+
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+<!-- Highlight.js -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
 <style>
-    body {
-        font-family: 'Roboto', sans-serif;
-        background: #f4f7fa;
-        margin: 0;
-        display: flex;
-        flex-direction: column;
-        height: 100vh;
-    }
-    header {
-        background: linear-gradient(90deg, #4a90e2, #50e3c2);
-        color: white;
-        padding: 20px;
-        text-align: center;
-        font-size: 2rem;
-        font-weight: 700;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-    main {
-        flex: 1;
-        padding: 20px;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-    }
-    .message {
-        max-width: 70%;
-        padding: 15px 20px;
-        border-radius: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        word-wrap: break-word;
-        animation: fadeIn 0.3s ease;
-        line-height: 1.5;
-        white-space: pre-wrap;
-    }
-    .user {
-        background: #4a90e2;
-        color: white;
-        align-self: flex-end;
-        border-bottom-right-radius: 0;
-    }
-    .aimi {
-        background: #ffffff;
-        color: #333;
-        align-self: flex-start;
-        border-bottom-left-radius: 0;
-    }
-    .message ol, .message ul {
-        margin: 10px 0 0 20px;
-    }
-    .message li {
-        margin-bottom: 5px;
-    }
-    .message h4 {
-        margin: 12px 0 6px 0;
-        font-size: 1rem;
-        font-weight: 700;
-        color: #2c3e50;
-    }
-    .message strong {
-        font-weight: 700;
-    }
-    @keyframes fadeIn {
-        from {opacity:0; transform: translateY(10px);}
-        to {opacity:1; transform: translateY(0);}
-    }
-    footer {
-        padding: 10px 20px;
-        background: #fff;
-        display: flex;
-        gap: 10px;
-        box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
-    }
-    input[type="text"] {
-        flex: 1;
-        padding: 12px 15px;
-        border-radius: 25px;
-        border: 1px solid #ccc;
-        outline: none;
-        font-size: 1rem;
-        transition: border 0.2s;
-    }
-    input[type="text"]:focus {
-        border: 2px solid #4a90e2;
-    }
-    button {
-        background: linear-gradient(90deg, #4a90e2, #50e3c2);
-        color: white;
-        border: none;
-        border-radius: 25px;
-        padding: 12px 20px;
-        font-size: 1rem;
-        cursor: pointer;
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-    button:hover {
-        transform: scale(1.05);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-    }
-    @media(max-width: 600px){
-        .message { max-width: 90%; }
-        header { font-size: 1.5rem; }
-    }
-    /* Aimi pensando */
-    .thinking {
-        font-style: italic;
-        opacity: 0.8;
-    }
-    .progress-container {
-        width: 100%;
-        background: #e0e0e0;
-        border-radius: 10px;
-        margin-top: 8px;
-        overflow: hidden;
-    }
-    .progress-bar {
-        height: 8px;
-        width: 0%;
-        background: linear-gradient(90deg, #4a90e2, #50e3c2);
-        animation: loading 1.5s infinite;
-    }
-    @keyframes loading {
-        0% { width: 0%; }
-        50% { width: 80%; }
-        100% { width: 0%; }
-    }
+body {
+    font-family: 'Roboto', sans-serif;
+    background: #f4f7fa;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+header {
+    background: linear-gradient(90deg, #4a90e2, #50e3c2);
+    color: white;
+    padding: 20px;
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+main {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.message {
+    max-width: 70%;
+    padding: 15px 20px;
+    border-radius: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    word-wrap: break-word;
+    line-height: 1.5;
+}
+
+.user {
+    background: #4a90e2;
+    color: white;
+    align-self: flex-end;
+    border-bottom-right-radius: 0;
+}
+
+.aimi {
+    background: #ffffff;
+    color: #333;
+    align-self: flex-start;
+    border-bottom-left-radius: 0;
+}
+
+/* BLOQUES DE CÓDIGO */
+
+pre {
+    position: relative;
+    background: #0d1117;
+    border-radius: 8px;
+    padding: 15px;
+    overflow-x: auto;
+    margin-top: 10px;
+}
+
+.copy-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+footer {
+    padding: 10px 20px;
+    background: #fff;
+    display: flex;
+    gap: 10px;
+}
+
+input {
+    flex: 1;
+    padding: 12px;
+    border-radius: 25px;
+    border: 1px solid #ccc;
+}
+
+button {
+    background: linear-gradient(90deg, #4a90e2, #50e3c2);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    padding: 12px 20px;
+    cursor: pointer;
+}
+
+.progress-container {
+    width:100%;
+    background:#e0e0e0;
+    border-radius:10px;
+    margin-top:8px;
+}
+
+.progress-bar {
+    height:8px;
+    background:linear-gradient(90deg,#4a90e2,#50e3c2);
+    animation:loading 1.5s infinite;
+}
+
+@keyframes loading {
+0%{width:0}
+50%{width:80%}
+100%{width:0}
+}
 </style>
 </head>
 
 <body>
+
 <header>Aimi Chat</header>
 
 <main id="chat"></main>
 
 <footer>
-    <input type="text" id="userInput" placeholder="Escribí tu mensaje..." />
-    <button id="sendBtn">Enviar</button>
+<input type="text" id="userInput" placeholder="Escribí tu mensaje...">
+<button id="sendBtn">Enviar</button>
 </footer>
 
 <script>
-const chatContainer = document.getElementById("chat");
-const input = document.getElementById("userInput");
-const button = document.getElementById("sendBtn");
-const apiBase = "https://aimi-backend-l2u4.onrender.com";
 
-/* ==========================
-   SESSION ID (MULTIUSUARIO)
-   ========================== */
-let sessionId = localStorage.getItem("aimi_session_id");
-if (!sessionId) {
-    sessionId = crypto.randomUUID();
-    localStorage.setItem("aimi_session_id", sessionId);
+const chatContainer = document.getElementById("chat")
+const input = document.getElementById("userInput")
+const button = document.getElementById("sendBtn")
+const apiBase = "https://aimi-backend-l2u4.onrender.com"
+
+let sessionId = localStorage.getItem("aimi_session_id")
+
+if(!sessionId){
+sessionId = crypto.randomUUID()
+localStorage.setItem("aimi_session_id",sessionId)
 }
 
+
 /* ==========================
-   Formateo de texto (listas, negritas y subtítulos)
-   ========================== */
+FORMATEAR TEXTO + CÓDIGO
+========================== */
+
 function formatText(text){
-    // Escapar HTML
-    text = text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 
-    // Convertir negritas: **texto** → <strong>texto</strong>
-    text = text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+text = text.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
 
-    // Subtítulos: 🔹 Título → <h4>Título</h4>
-    text = text.replace(/^🔹\s*(.+)$/gm, "<h4>$1</h4>");
+/* BLOQUES ``` */
+text = text.replace(/```(\w+)?\n([\s\S]*?)```/g,function(match,lang,code){
 
-    // Convertir viñetas
-    const lines = text.split("\n").map(line => line.trim());
-    let formattedLines = lines.map(line => {
-        if(line.match(/^(\-|\*)\s+/)){
-            return `<li>${line.replace(/^(\-|\*)\s+/, '')}</li>`;
-        } else if(line.match(/^\d+\.\s+/)){
-            return `<li>${line.replace(/^\d+\.\s+/, '')}</li>`;
-        } else if(line.match(/^<h4>/)) {
-            return line;
-        } else {
-            return `<p>${line}</p>`;
-        }
-    });
+return `<pre><code class="language-${lang||""}">${code}</code></pre>`
 
-    // Agrupar <li> en <ul> u <ol>
-    let html = "";
-    let inList = false;
-    let listType = "ul";
-    formattedLines.forEach(line => {
-        if(line.startsWith("<li>")){
-            if(!inList){
-                listType = "ul"; // todas las viñetas con - o * → ul
-                html += `<${listType}>`;
-                inList = true;
-            }
-            html += line;
-        } else {
-            if(inList){
-                html += `</${listType}>`;
-                inList = false;
-            }
-            html += line;
-        }
-    });
-    if(inList) html += `</${listType}>`;
+})
 
-    return html;
+/* NEGRITAS */
+
+text = text.replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")
+
+/* SUBTITULOS */
+
+text = text.replace(/^🔹\s*(.+)$/gm,"<h4>$1</h4>")
+
+/* LISTAS */
+
+const lines = text.split("\n")
+
+let html=""
+let inList=false
+
+lines.forEach(line=>{
+
+line=line.trim()
+
+if(line.match(/^(\-|\*)\s+/)){
+
+if(!inList){
+html+="<ul>"
+inList=true
 }
 
-/* ==========================
-   Agregar mensaje al chat
-   ========================== */
-function addMessage(text, cls){
-    const div = document.createElement("div");
-    div.className = "message " + cls;
-    div.innerHTML = formatText(text);
-    chatContainer.appendChild(div);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
+html+=`<li>${line.replace(/^(\-|\*)\s+/,"")}</li>`
+
+}
+else{
+
+if(inList){
+html+="</ul>"
+inList=false
 }
 
+html+=`<p>${line}</p>`
+
+}
+
+})
+
+if(inList) html+="</ul>"
+
+return html
+
+}
+
+
 /* ==========================
-   Mensaje "Aimi está pensando"
-   ========================== */
+COPIAR CÓDIGO
+========================== */
+
+function addCopyButtons(){
+
+document.querySelectorAll("pre").forEach(pre=>{
+
+if(pre.querySelector(".copy-btn")) return
+
+const btn=document.createElement("button")
+
+btn.innerText="Copiar"
+btn.className="copy-btn"
+
+btn.onclick=()=>{
+
+const code=pre.innerText
+navigator.clipboard.writeText(code)
+
+btn.innerText="Copiado!"
+
+setTimeout(()=>btn.innerText="Copiar",1500)
+
+}
+
+pre.appendChild(btn)
+
+})
+
+}
+
+
+/* ==========================
+MENSAJES
+========================== */
+
+function addMessage(text,cls){
+
+const div=document.createElement("div")
+
+div.className="message "+cls
+
+div.innerHTML=formatText(text)
+
+chatContainer.appendChild(div)
+
+hljs.highlightAll()
+
+addCopyButtons()
+
+chatContainer.scrollTop=chatContainer.scrollHeight
+
+}
+
+
 function addThinking(){
-    const div = document.createElement("div");
-    div.className = "message aimi thinking";
-    div.innerHTML = `
-        Aimi está pensando…
-        <div class="progress-container">
-            <div class="progress-bar"></div>
-        </div>
-    `;
-    chatContainer.appendChild(div);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-    return div;
+
+const div=document.createElement("div")
+
+div.className="message aimi"
+
+div.innerHTML=`
+Aimi está pensando…
+<div class="progress-container">
+<div class="progress-bar"></div>
+</div>
+`
+
+chatContainer.appendChild(div)
+
+return div
+
 }
 
+
 /* ==========================
-   Enviar mensaje
-   ========================== */
+ENVIAR MENSAJE
+========================== */
+
 async function sendMessage(){
-    const msg = input.value.trim();
-    if(!msg) return;
 
-    addMessage(msg, "user");
-    input.value = "";
+const msg=input.value.trim()
 
-    // Mostrar pensando
-    const thinkingEl = addThinking();
+if(!msg) return
 
-    try {
-        const res = await fetch(`${apiBase}/chat`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                session_id: sessionId,
-                message: msg
-            })
-        });
+addMessage(msg,"user")
 
-        const data = await res.json();
+input.value=""
 
-        thinkingEl.remove();
+const thinking=addThinking()
 
-        // Mostrar respuesta formateada
-        addMessage(data.answer || "Error: sin respuesta", "aimi");
+try{
 
-    } catch(e){
-        thinkingEl.remove();
-        addMessage("Error: no se pudo conectar con el servidor", "aimi");
-        console.error(e);
-    }
+const res=await fetch(`${apiBase}/chat`,{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+session_id:sessionId,
+message:msg
+})
+})
+
+const data=await res.json()
+
+thinking.remove()
+
+addMessage(data.answer || "Sin respuesta","aimi")
+
+}catch(e){
+
+thinking.remove()
+
+addMessage("Error conectando con servidor","aimi")
+
 }
 
-/* ==========================
-   Eventos
-   ========================== */
-button.addEventListener("click", sendMessage);
-input.addEventListener("keydown", (e) => {
-    if(e.key === "Enter") sendMessage();
-});
+}
+
+
+button.onclick=sendMessage
+
+input.addEventListener("keydown",e=>{
+if(e.key==="Enter") sendMessage()
+})
+
 </script>
 
 </body>
