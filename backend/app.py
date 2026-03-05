@@ -97,20 +97,117 @@ def classify_intent(text: str) -> str:
 # ==========================
 # Endpoints
 # ==========================
+# ==========================
+# AUTO FORMAT CODE
+# ==========================
+import re
+import textwrap
+
+def auto_format_code(text: str) -> str:
+    """
+    Detecta automáticamente si el texto contiene código y cuál es el lenguaje.
+    Envuelve en bloques Markdown ``` con el lenguaje detectado.
+    Intenta mejorar indentación para Python y JS.
+    """
+    if "```" in text:
+        return text  # Ya está formateado
+
+    # Diccionario de patrones por lenguaje
+    code_patterns = {
+        "python": [
+            r"\bdef\s+\w+\(",
+            r"\bclass\s+\w+",
+            r"\breturn\s+",
+            r"print\(",
+            r"\bfor\s+\w+\s+in\s+",
+            r"\bif\s+.*:",
+            r"\belif\b",
+            r"\bimport\b"
+        ],
+        "javascript": [
+            r"function\s+\w+\(",
+            r"console\.log\(",
+            r"{.*}",
+            r";$",
+            r"\bconst\b",
+            r"\blet\b",
+            r"\bvar\b",
+        ],
+        "java": [
+            r"public\s+class\s+\w+",
+            r"System\.out\.println\(",
+        ],
+        "c": [
+            r"#include\s+<.*>",
+            r"printf\(",
+            r"int\s+main\s*\(",
+        ],
+        "cpp": [
+            r"#include\s+<.*>",
+            r"std::cout",
+            r"int\s+main\s*\(",
+        ],
+        "bash": [
+            r"#!/bin/bash",
+            r"echo\s+",
+            r"\$[a-zA-Z_]+"
+        ],
+        "html": [
+            r"<!DOCTYPE html>",
+            r"<html.*>",
+            r"<head>",
+            r"<body>"
+        ],
+        "css": [
+            r"\{.*\}",
+            r"[.#]?[a-zA-Z0-9_-]+\s*\{"
+        ],
+        "sql": [
+            r"\bSELECT\b",
+            r"\bINSERT\b",
+            r"\bUPDATE\b",
+            r"\bDELETE\b",
+            r"\bFROM\b",
+            r"\bWHERE\b"
+        ]
+    }
+
+    detected_language = None
+    for lang, patterns in code_patterns.items():
+        for pattern in patterns:
+            if re.search(pattern, text, re.IGNORECASE):
+                detected_language = lang
+                break
+        if detected_language:
+            break
+
+    if detected_language:
+        lines = text.splitlines()
+        cleaned_lines = [line.rstrip() for line in lines if line.strip() != ""]
+        cleaned_text = "\n".join(cleaned_lines)
+
+        if detected_language in ["python", "javascript"]:
+            cleaned_text = textwrap.dedent(cleaned_text)
+
+        return f"```{detected_language}\n{cleaned_text}\n```"
+
+    return text
+
+
+# ==========================
+# ENDPOINT CHAT
+# ==========================
 @app.post("/chat")
 async def chat(msg: Message):
-    # Obtener o crear estado por sesión
     state = conversation_states.get(msg.session_id)
     if not state:
         state = get_initial_state()
         conversation_states[msg.session_id] = state
 
-    # OPERADOR: clasificar intención antes del modelo
     intent = classify_intent(msg.message)
     if intent == "provide_resource":
         state["current_topic"] = "resource"
 
-    # Prompt del operador
     system_prompt = f"""
 Sos Aimi.
 Objetivo: {state['objective']}
@@ -130,17 +227,25 @@ Reglas estrictas:
 
     try:
         completion = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        messages=messages
-    )
-    answer = completion.choices[0].message.content
+            model="gpt-4.1-mini",
+            messages=messages
+        )
+        answer = completion.choices[0].message.content
 
-    # Post-procesado para envolver código automáticamente
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # Post-procesado para código
     answer = auto_format_code(answer)
 
     # Actualizar historial
     state["history"].append({"role": "user", "content": msg.message})
     state["history"].append({"role": "assistant", "content": answer})
+
+    if len(state["history"]) > MAX_HISTORY:
+        state["history"] = state["history"][-MAX_HISTORY:]
+
+    state["has_introduced"] = True
 
     # Guardar en DB
     with get_db() as conn:
@@ -309,100 +414,3 @@ async def generate_topic(req: GenerateTopicRequest):
         print("Error generando topic:", e)
 
         return {"topic": "general"}
-
-import re
-import textwrap
-
-def auto_format_code(text: str) -> str:
-    """
-    Detecta automáticamente si el texto contiene código y cuál es el lenguaje.
-    Envuelve en bloques Markdown ``` con el lenguaje detectado.
-    Intenta mejorar indentación para Python y JS.
-    """
-    if "```" in text:
-        return text  # Ya está formateado
-
-    # Diccionario de patrones por lenguaje
-    code_patterns = {
-        "python": [
-            r"\bdef\s+\w+\(",
-            r"\bclass\s+\w+",
-            r"\breturn\s+",
-            r"print\(",
-            r"\bfor\s+\w+\s+in\s+",
-            r"\bif\s+.*:",
-            r"\belif\b",
-            r"\bimport\b"
-        ],
-        "javascript": [
-            r"function\s+\w+\(",
-            r"console\.log\(",
-            r"{.*}",
-            r";$",
-            r"\bconst\b",
-            r"\blet\b",
-            r"\bvar\b",
-        ],
-        "java": [
-            r"public\s+class\s+\w+",
-            r"System\.out\.println\(",
-        ],
-        "c": [
-            r"#include\s+<.*>",
-            r"printf\(",
-            r"int\s+main\s*\(",
-        ],
-        "cpp": [
-            r"#include\s+<.*>",
-            r"std::cout",
-            r"int\s+main\s*\(",
-        ],
-        "bash": [
-            r"#!/bin/bash",
-            r"echo\s+",
-            r"\$[a-zA-Z_]+"
-        ],
-        "html": [
-            r"<!DOCTYPE html>",
-            r"<html.*>",
-            r"<head>",
-            r"<body>"
-        ],
-        "css": [
-            r"\{.*\}",
-            r"[.#]?[a-zA-Z0-9_-]+\s*\{"
-        ],
-        "sql": [
-            r"\bSELECT\b",
-            r"\bINSERT\b",
-            r"\bUPDATE\b",
-            r"\bDELETE\b",
-            r"\bFROM\b",
-            r"\bWHERE\b"
-        ]
-    }
-
-    detected_language = None
-
-    for lang, patterns in code_patterns.items():
-        for pattern in patterns:
-            if re.search(pattern, text, re.IGNORECASE):
-                detected_language = lang
-                break
-        if detected_language:
-            break
-
-    # Si detectamos código, limpiamos y aplicamos indentación
-    if detected_language:
-        lines = text.splitlines()
-        # Limpiar espacios finales
-        cleaned_lines = [line.rstrip() for line in lines if line.strip() != ""]
-        cleaned_text = "\n".join(cleaned_lines)
-
-        # Mejora indentación para Python y JS
-        if detected_language in ["python", "javascript"]:
-            cleaned_text = textwrap.dedent(cleaned_text)
-
-        return f"```{detected_language}\n{cleaned_text}\n```"
-
-    return text  # No es código
