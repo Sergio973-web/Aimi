@@ -166,32 +166,15 @@ Reglas estrictas:
 # =========================
 @app.get("/interactions")
 async def get_interactions():
-
     with get_db() as conn:
         with conn.cursor() as cur:
-
             cur.execute("""
                 SELECT id, question, answer, status, topic
                 FROM interactions
                 ORDER BY id DESC;
             """)
-
-            rows = cur.fetchall()
-
-            interactions = []
-
-            for row in rows:
-                interactions.append({
-                    "id": row[0],
-                    "question": row[1],
-                    "answer": row[2],
-                    "status": row[3],
-                    "topic": row[4]
-                })
-
-            return interactions
-
-
+            return cur.fetchall()
+            
 # =========================
 # VERIFIER VOTING
 # =========================
