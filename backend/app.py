@@ -219,7 +219,7 @@ async def get_interactions():
         with get_db() as conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                    SELECT id, question, answer, status, topic
+                    SELECT *
                     FROM interactions
                     ORDER BY id DESC;
                 """)
