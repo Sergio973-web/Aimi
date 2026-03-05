@@ -151,6 +151,14 @@ pre {
 </footer>
 
 <script>
+function escapeHTML(str) {
+    return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
 
 const chatContainer = document.getElementById("chat")
 const input = document.getElementById("userInput")
@@ -178,8 +186,8 @@ function formatText(text) {
 
     // BLOQUES DE CÓDIGO ``` ```
     text = text.replace(/```(\w*)\s*([\s\S]*?)```/g, function(match, lang, code) {
-        code = code.trim();
-        return `<pre><code class="language-${lang || ''}">${code}</code></pre>`;
+        code = escapeHTML(code.trim());  // <-- ESCAPAR HTML
+        return `<pre><code class="language-${lang || ''} hljs">${code}</code></pre>`;
     });
 
     // DETECTAR CÓDIGO SIMPLE (una línea)
@@ -263,24 +271,38 @@ pre.appendChild(btn)
 MENSAJES
 ========================== */
 
-function addMessage(text,cls){
+function addMessage(text, cls) {
+    const div = document.createElement("div");
+    div.className = "message " + cls;
 
-const div=document.createElement("div")
+    // Formatear texto y bloques de código
+    div.innerHTML = formatText(text);
 
-div.className="message "+cls
+    chatContainer.appendChild(div);
 
-div.innerHTML=formatText(text)
+    // Resaltar bloques de código de forma segura
+    div.querySelectorAll('pre code').forEach(block => {
+        // Escapar HTML
+        block.innerHTML = block.innerHTML
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
 
-chatContainer.appendChild(div)
+        // Resetear resaltado previo
+        delete block.dataset.highlighted;
 
-hljs.highlightAll()
+        // Aplicar Highlight.js
+        hljs.highlightElement(block);
+    });
 
-addCopyButtons()
+    // Agregar botones de copiar
+    addCopyButtons();
 
-chatContainer.scrollTop=chatContainer.scrollHeight
-
+    // Scroll al final
+    chatContainer.scrollTop = chatContainer.scrollHeight;
 }
-
 
 function addThinking(){
 
