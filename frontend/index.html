@@ -377,19 +377,11 @@ addMessage("Error conectando con servidor","aimi")
 
 button.onclick=sendMessage
 
-input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-        if (e.shiftKey) {
-            // Shift + Enter → insertar salto de línea
-            const start = input.selectionStart;
-            const end = input.selectionEnd;
-            input.value = input.value.substring(0, start) + "\n" + input.value.substring(end);
-            input.selectionStart = input.selectionEnd = start + 1; // mover cursor al final del salto
-        } else {
-            // Enter → enviar mensaje
-            sendMessage();
-            e.preventDefault(); // evita que haga salto de línea
-        }
+input.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) {
+        // Solo Enter sin Shift → enviar mensaje
+        e.preventDefault(); // evita salto de línea
+        sendMessage();
     }
 });
 
