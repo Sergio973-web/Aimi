@@ -215,14 +215,21 @@ return {"answer": answer, "source": "ai"}
 # =========================
 @app.get("/interactions")
 async def get_interactions():
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT *
-                FROM interactions
-                ORDER BY id DESC;
-            """)
-            return cur.fetchall()
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, question, answer, status, topic
+                    FROM interactions
+                    ORDER BY id DESC;
+                """)
+
+                rows = cur.fetchall()
+
+                return [dict(r) for r in rows]
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # =========================
@@ -321,8 +328,6 @@ async def operator_approve(a: OperatorApprove):
 
     return {"ok": True}
 
-import openai
-
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 class GenerateTopicRequest(BaseModel):
@@ -330,27 +335,25 @@ class GenerateTopicRequest(BaseModel):
 
 @app.post("/openai/generate_topic")
 async def generate_topic(req: GenerateTopicRequest):
-    """
-    Recibe un prompt con la interacción (pregunta + respuesta)
-    y devuelve un topic breve (1-3 palabras) para la conversación.
-    """
+
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # o gpt-4 si tienes acceso
+
+        completion = client.chat.completions.create(
+            model="gpt-4.1-mini",
             messages=[
-                {"role": "system", "content": "Eres un generador de topics breves para interacciones de chat."},
+                {"role": "system", "content": "Genera un topic muy breve de 1 a 3 palabras."},
                 {"role": "user", "content": req.prompt}
             ],
-            temperature=0.5,
-            max_tokens=10  # solo queremos un topic muy breve
+            max_tokens=10
         )
 
-        topic_text = response.choices[0].message.content.strip()
+        topic_text = completion.choices[0].message.content.strip()
+
         topic_words = topic_text.split()
-        topic_clean = " ".join(topic_words[:3])  # 1-3 palabras
+        topic_clean = " ".join(topic_words[:3])
 
         return {"topic": topic_clean}
 
     except Exception as e:
-        print("Error generando topic con OpenAI:", e)
-        return {"topic": "general"}  # fallback con logs
+        print("Error generando topic:", e)
+        return {"topic": "general"}
