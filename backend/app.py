@@ -130,23 +130,19 @@ Reglas estrictas:
 
     try:
         completion = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=messages
-        )
-        answer = completion.choices[0].message.content
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        model="gpt-4.1-mini",
+        messages=messages
+    )
+    answer = completion.choices[0].message.content
 
-    # Actualizar historial del usuario
+    # Post-procesado para envolver código automáticamente
+    answer = auto_format_code(answer)
+
+    # Actualizar historial
     state["history"].append({"role": "user", "content": msg.message})
     state["history"].append({"role": "assistant", "content": answer})
 
-    if len(state["history"]) > MAX_HISTORY:
-        state["history"] = state["history"][-MAX_HISTORY:]
-
-    state["has_introduced"] = True
-
-    # Guardar interacción
+    # Guardar en DB
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -159,9 +155,8 @@ Reglas estrictas:
             )
             conn.commit()
 
-    answer = auto_format_code(answer)  # aplica el post-procesado
-
     return {"answer": answer, "source": "ai"}
+
 
 # =========================
 # GET INTERACTIONS
@@ -320,26 +315,38 @@ import re
 def auto_format_code(text: str) -> str:
     """
     Detecta si la respuesta parece contener código
-    y la envuelve en bloques Markdown ``` si no los tiene.
+    y la envuelve automáticamente en bloques Markdown
+    ```python``` o ```javascript```.
     """
-
+    # Si ya tiene triple backticks, no hacemos nada
     if "```" in text:
         return text
 
-    code_patterns = [
+    # Patrones para Python
+    python_patterns = [
         r"\bdef\s+\w+\(",
         r"\bclass\s+\w+",
         r"\breturn\s+",
         r"print\(",
-        r"console\.log\(",
         r"\bfor\s+\w+\s+in\s+",
-        r"\bif\s+.*:",
+        r"\bif\s+.*:"
+    ]
+
+    # Patrones para JavaScript
+    js_patterns = [
+        r"function\s+\w+\(",
+        r"console\.log\(",
         r"{.*}",
         r";$"
     ]
 
-    for pattern in code_patterns:
+    for pattern in python_patterns:
         if re.search(pattern, text):
             return f"```python\n{text}\n```"
 
+    for pattern in js_patterns:
+        if re.search(pattern, text):
+            return f"```javascript\n{text}\n```"
+
+    # Si no se detecta código, devolvemos tal cual
     return text
