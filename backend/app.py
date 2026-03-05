@@ -311,42 +311,98 @@ async def generate_topic(req: GenerateTopicRequest):
         return {"topic": "general"}
 
 import re
+import textwrap
 
 def auto_format_code(text: str) -> str:
     """
-    Detecta si la respuesta parece contener código
-    y la envuelve automáticamente en bloques Markdown
-    ```python``` o ```javascript```.
+    Detecta automáticamente si el texto contiene código y cuál es el lenguaje.
+    Envuelve en bloques Markdown ``` con el lenguaje detectado.
+    Intenta mejorar indentación para Python y JS.
     """
-    # Si ya tiene triple backticks, no hacemos nada
     if "```" in text:
-        return text
+        return text  # Ya está formateado
 
-    # Patrones para Python
-    python_patterns = [
-        r"\bdef\s+\w+\(",
-        r"\bclass\s+\w+",
-        r"\breturn\s+",
-        r"print\(",
-        r"\bfor\s+\w+\s+in\s+",
-        r"\bif\s+.*:"
-    ]
+    # Diccionario de patrones por lenguaje
+    code_patterns = {
+        "python": [
+            r"\bdef\s+\w+\(",
+            r"\bclass\s+\w+",
+            r"\breturn\s+",
+            r"print\(",
+            r"\bfor\s+\w+\s+in\s+",
+            r"\bif\s+.*:",
+            r"\belif\b",
+            r"\bimport\b"
+        ],
+        "javascript": [
+            r"function\s+\w+\(",
+            r"console\.log\(",
+            r"{.*}",
+            r";$",
+            r"\bconst\b",
+            r"\blet\b",
+            r"\bvar\b",
+        ],
+        "java": [
+            r"public\s+class\s+\w+",
+            r"System\.out\.println\(",
+        ],
+        "c": [
+            r"#include\s+<.*>",
+            r"printf\(",
+            r"int\s+main\s*\(",
+        ],
+        "cpp": [
+            r"#include\s+<.*>",
+            r"std::cout",
+            r"int\s+main\s*\(",
+        ],
+        "bash": [
+            r"#!/bin/bash",
+            r"echo\s+",
+            r"\$[a-zA-Z_]+"
+        ],
+        "html": [
+            r"<!DOCTYPE html>",
+            r"<html.*>",
+            r"<head>",
+            r"<body>"
+        ],
+        "css": [
+            r"\{.*\}",
+            r"[.#]?[a-zA-Z0-9_-]+\s*\{"
+        ],
+        "sql": [
+            r"\bSELECT\b",
+            r"\bINSERT\b",
+            r"\bUPDATE\b",
+            r"\bDELETE\b",
+            r"\bFROM\b",
+            r"\bWHERE\b"
+        ]
+    }
 
-    # Patrones para JavaScript
-    js_patterns = [
-        r"function\s+\w+\(",
-        r"console\.log\(",
-        r"{.*}",
-        r";$"
-    ]
+    detected_language = None
 
-    for pattern in python_patterns:
-        if re.search(pattern, text):
-            return f"```python\n{text}\n```"
+    for lang, patterns in code_patterns.items():
+        for pattern in patterns:
+            if re.search(pattern, text, re.IGNORECASE):
+                detected_language = lang
+                break
+        if detected_language:
+            break
 
-    for pattern in js_patterns:
-        if re.search(pattern, text):
-            return f"```javascript\n{text}\n```"
+    # Si detectamos código, limpiamos y aplicamos indentación
+    if detected_language:
+        lines = text.splitlines()
+        # Limpiar espacios finales
+        cleaned_lines = [line.rstrip() for line in lines if line.strip() != ""]
+        cleaned_text = "\n".join(cleaned_lines)
 
-    # Si no se detecta código, devolvemos tal cual
-    return text
+        # Mejora indentación para Python y JS
+        if detected_language in ["python", "javascript"]:
+            cleaned_text = textwrap.dedent(cleaned_text)
+
+        return f"```{detected_language}\n{cleaned_text}\n```"
+
+    return text  # No es código
