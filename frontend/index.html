@@ -275,14 +275,23 @@ function addMessage(text, cls) {
     const div = document.createElement("div");
     div.className = "message " + cls;
 
-    // Formatear texto y bloques de código
+    // === DEBUG: ver qué texto llega desde la IA ===
+    console.log("Texto original recibido:", text);
+
+    // === LIMPIAR <p> innecesarios que vienen de la IA ===
+    text = text.replace(/<p>/g, "").replace(/<\/p>/g, "\n").trim();
+
+    // === Formatear texto y bloques de código ===
     div.innerHTML = formatText(text);
 
     chatContainer.appendChild(div);
 
-    // Resaltar bloques de código de forma segura
-    div.querySelectorAll('pre code').forEach(block => {
-        // Escapar HTML
+    // === Resaltar bloques de código de forma segura ===
+    div.querySelectorAll('pre code').forEach((block, idx) => {
+        // DEBUG: ver contenido de cada bloque antes de resaltar
+        console.log(`Bloque ${idx} contenido antes de escapar:`, block.innerHTML);
+
+        // Escapar HTML para seguridad
         block.innerHTML = block.innerHTML
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
@@ -290,19 +299,23 @@ function addMessage(text, cls) {
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
 
-        // Resetear resaltado previo
+        // Resetear resaltado previo si existía
         delete block.dataset.highlighted;
 
         // Aplicar Highlight.js
         hljs.highlightElement(block);
+
+        // DEBUG: ver contenido final del bloque
+        console.log(`Bloque ${idx} contenido después de escapar y resaltar:`, block.innerHTML);
     });
 
-    // Agregar botones de copiar
+    // === Agregar botones de copiar ===
     addCopyButtons();
 
-    // Scroll al final
+    // === Scroll al final ===
     chatContainer.scrollTop = chatContainer.scrollHeight;
 }
+
 
 function addThinking(){
 
