@@ -172,6 +172,26 @@ sessionId = crypto.randomUUID()
 localStorage.setItem("aimi_session_id",sessionId)
 }
 
+// Historial de conversación
+let conversationHistory = [] // Guardamos {role:"user"/"assistant", content:"..."}
+
+function similarity(a, b) {
+    const wa = new Set(a.toLowerCase().split(/\W+/));
+    const wb = new Set(b.toLowerCase().split(/\W+/));
+    const inter = [...wa].filter(x => wb.has(x)).length;
+    return inter / Math.max(wa.size, wb.size);
+}
+
+function verificarSiEsNecesario(nuevoMensaje) {
+    const THRESHOLD_SIMILARIDAD = 0.7;
+    return conversationHistory.some((h, idx) => {
+        return h.role === "user" &&
+               similarity(nuevoMensaje, h.content) >= THRESHOLD_SIMILARIDAD &&
+               conversationHistory[idx + 1] &&
+               conversationHistory[idx + 1].role === "assistant";
+    });
+}
+
 
 /* ==========================
 FORMATEAR TEXTO + CÓDIGO
@@ -316,6 +336,17 @@ function addMessage(text, cls) {
 
     // === Scroll al final ===
     chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    // Guardar en historial
+    const role = cls === "user" ? "user" : "assistant";
+    conversationHistory.push({role, content:text});
+
+    // Verificación automática
+    if (role === "user" && verificarSiEsNecesario(text)) {
+        console.log("⚠️ Este hilo muestra que la respuesta anterior no fue suficiente → enviar a verificación");
+        // Si tenés función real: enviarAVerificacion(text);
+    }
+
 }
 
 
