@@ -161,26 +161,60 @@ FORMATEAR TEXTO + CÓDIGO
 
 function formatText(text){
 
-text = text.replace(/&/g,"&amp;")
+/* ESCAPAR HTML */
+
+text = text
+.replace(/&/g,"&amp;")
 .replace(/</g,"&lt;")
 .replace(/>/g,"&gt;")
 
-/* BLOQUES ``` */
+/* =========================
+BLOQUES DE CÓDIGO ``` ```
+========================= */
+
 text = text.replace(/```(\w+)?\n([\s\S]*?)```/g,function(match,lang,code){
 
 return `<pre><code class="language-${lang||""}">${code}</code></pre>`
 
 })
 
-/* NEGRITAS */
+/* =========================
+DETECTAR CÓDIGO SIMPLE
+ej:
+def hola():
+print("hola")
+========================= */
+
+if(
+text.includes("def ") ||
+text.includes("return ") ||
+text.includes("print(") ||
+text.includes("console.log(")
+){
+
+if(!text.includes("<pre>")){
+
+text = `<pre><code class="language-python">${text}</code></pre>`
+
+}
+
+}
+
+/* =========================
+NEGRITAS
+========================= */
 
 text = text.replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")
 
-/* SUBTITULOS */
+/* =========================
+SUBTITULOS
+========================= */
 
 text = text.replace(/^🔹\s*(.+)$/gm,"<h4>$1</h4>")
 
-/* LISTAS */
+/* =========================
+LISTAS
+========================= */
 
 const lines = text.split("\n")
 

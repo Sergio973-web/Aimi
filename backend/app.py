@@ -159,6 +159,8 @@ Reglas estrictas:
             )
             conn.commit()
 
+    answer = auto_format_code(answer)  # aplica el post-procesado
+
     return {"answer": answer, "source": "ai"}
 
 # =========================
@@ -312,3 +314,32 @@ async def generate_topic(req: GenerateTopicRequest):
         print("Error generando topic:", e)
 
         return {"topic": "general"}
+
+import re
+
+def auto_format_code(text: str) -> str:
+    """
+    Detecta si la respuesta parece contener código
+    y la envuelve en bloques Markdown ``` si no los tiene.
+    """
+
+    if "```" in text:
+        return text
+
+    code_patterns = [
+        r"\bdef\s+\w+\(",
+        r"\bclass\s+\w+",
+        r"\breturn\s+",
+        r"print\(",
+        r"console\.log\(",
+        r"\bfor\s+\w+\s+in\s+",
+        r"\bif\s+.*:",
+        r"{.*}",
+        r";$"
+    ]
+
+    for pattern in code_patterns:
+        if re.search(pattern, text):
+            return f"```python\n{text}\n```"
+
+    return text
