@@ -178,7 +178,12 @@ function formatText(text) {
         .replace(/>/g, "&gt;");
 
     // BLOQUES DE CÓDIGO ``` ``` o código simple
-    text = text.replace(/```(\w+)?\n([\s\S]*?)```|((?:def |class |return |print\(|console\.log\().*?)/g,
+    text = text.replace(/```(\w*)\s*([\s\S]*?)```/g, function(match, lang, code) {
+            // Limpiar posibles espacios iniciales/finales
+            code = code.trim();
+            return `<pre><code class="language-${lang || ''}">${code}</code></pre>`;
+        });
+    
         function(match, lang, code, simpleCode) {
 
             let content = code || simpleCode;
