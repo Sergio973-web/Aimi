@@ -295,11 +295,11 @@ function addMessage(text, cls) {
 
     // === Resaltar bloques de código de forma segura ===
     div.querySelectorAll('pre code').forEach((block, idx) => {
-        // DEBUG: contenido antes de escapar
-        console.log(`Bloque ${idx} antes de escapar:`, block.innerHTML);
+        // DEBUG
+        console.log(`Bloque ${idx} antes de resaltar:`, block.textContent);
 
-        // Escapar HTML por seguridad
-        block.innerHTML = escapeHTML(block.innerHTML);
+        // Asignar el contenido como textContent (no innerHTML) para que se vea bonito
+        block.textContent = block.textContent;
 
         // Resetear resaltado previo
         delete block.dataset.highlighted;
@@ -307,8 +307,8 @@ function addMessage(text, cls) {
         // Aplicar Highlight.js
         hljs.highlightElement(block);
 
-        // DEBUG: contenido final del bloque
-        console.log(`Bloque ${idx} después de resaltar:`, block.innerHTML);
+        // DEBUG
+        console.log(`Bloque ${idx} después de resaltar:`, block.textContent);
     });
 
     // === Agregar botones de copiar ===
