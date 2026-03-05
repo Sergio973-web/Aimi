@@ -22,10 +22,7 @@ app = FastAPI(title="Aimi Backend")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://aimi-chat.onrender.com"
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -97,139 +94,86 @@ def classify_intent(text: str) -> str:
         return "ask_how"
     return "continue"
 
+# ==========================
+# Endpoints
+# ==========================
 @app.post("/chat")
-
 async def chat(msg: Message):
+    # Obtener o crear estado por sesión
+    state = conversation_states.get(msg.session_id)
+    if not state:
+        state = get_initial_state()
+        conversation_states[msg.session_id] = state
 
-# Obtener o crear estado por sesión
+    # OPERADOR: clasificar intención antes del modelo
+    intent = classify_intent(msg.message)
+    if intent == "provide_resource":
+        state["current_topic"] = "resource"
 
-state = conversation_states.get(msg.session_id)
-
-if not state:
-
-state = get_initial_state()
-
-conversation_states[msg.session_id] = state
-
-# OPERADOR: clasificar intención antes del modelo
-
-intent = classify_intent(msg.message)
-
-if intent == "provide_resource":
-
-state["current_topic"] = "resource"
-
-# Construir prompt didáctico y visual, incorporando datos del estado y pregunta
-
-base_prompt = f"""
-
-Sos Aimi, un asistente experto en dar respuestas didácticas y visuales. Respondé la siguiente pregunta de manera clara y completa:
-
-Resaltá lo más importante en negrita.
-Enumerá puntos clave con viñetas.
-Separá en secciones si hay distintos temas.
-Al final, incluí un pequeño resumen con lo más relevante.
-Pregunta: {msg.message}
-
-Respuesta:
-
-"""
-
-system_prompt = f"""Sos Aimi. Objetivo: {state['objective']} Tema actual: {state['current_topic']}
+    # Prompt del operador
+    system_prompt = f"""
+Sos Aimi.
+Objetivo: {state['objective']}
+Tema actual: {state['current_topic']}
 
 Reglas estrictas:
-
-No te reinicies.
-No te presentes otra vez.
-No preguntes "¿en qué te ayudo?" si el usuario aportó información.
-Continuá el hilo de la conversación.
-Respondé de forma directa y útil.
-{base_prompt}
-
+- No te reinicies.
+- No te presentes otra vez.
+- No preguntes "¿en qué te ayudo?" si el usuario aportó información.
+- Continuá el hilo de la conversación.
+- Respondé de forma directa y útil.
 """
 
-messages = [{"role": "system", "content": system_prompt}]
+    messages = [{"role": "system", "content": system_prompt}]
+    messages.extend(state["history"])
+    messages.append({"role": "user", "content": msg.message})
 
-messages.extend(state["history"])
+    try:
+        completion = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=messages
+        )
+        answer = completion.choices[0].message.content
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-messages.append({"role": "user", "content": msg.message})
+    # Actualizar historial del usuario
+    state["history"].append({"role": "user", "content": msg.message})
+    state["history"].append({"role": "assistant", "content": answer})
 
-try:
+    if len(state["history"]) > MAX_HISTORY:
+        state["history"] = state["history"][-MAX_HISTORY:]
 
-completion = client.chat.completions.create(
+    state["has_introduced"] = True
 
-model="gpt-4.1-mini",
+    # Guardar interacción
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO interactions (question, answer)
+                VALUES (%s, %s)
+                RETURNING *;
+                """,
+                (msg.message, answer)
+            )
+            conn.commit()
 
-messages=messages
-
-)
-
-answer = completion.choices[0].message.content
-
-except Exception as e:
-
-raise HTTPException(status_code=500, detail=str(e))
-
-# Actualizar historial del usuario
-
-state["history"].append({"role": "user", "content": msg.message})
-
-state["history"].append({"role": "assistant", "content": answer})
-
-if len(state["history"]) > MAX_HISTORY:
-
-state["history"] = state["history"][-MAX_HISTORY:]
-
-state["has_introduced"] = True
-
-# Guardar interacción
-
-with get_db() as conn:
-
-with conn.cursor() as cur:
-
-cur.execute(
-
-"""
-
-INSERT INTO interactions (question, answer)
-
-VALUES (%s, %s)
-
-RETURNING *;
-
-""",
-
-(msg.message, answer)
-
-)
-
-conn.commit()
-
-return {"answer": answer, "source": "ai"}
-
-
+    return {"answer": answer, "source": "ai"}
 
 # =========================
 # GET INTERACTIONS
 # =========================
 @app.get("/interactions")
 async def get_interactions():
-    try:
-        with get_db() as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    SELECT *
-                    FROM interactions
-                    ORDER BY id DESC;
-                """)
-
-                rows = cur.fetchall()
-
-                return [dict(r) for r in rows]
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT *
+                FROM interactions
+                ORDER BY id DESC;
+            """)
+            return cur.fetchall()
 
 
 # =========================
@@ -328,6 +272,8 @@ async def operator_approve(a: OperatorApprove):
 
     return {"ok": True}
 
+import openai
+
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 class GenerateTopicRequest(BaseModel):
@@ -335,25 +281,27 @@ class GenerateTopicRequest(BaseModel):
 
 @app.post("/openai/generate_topic")
 async def generate_topic(req: GenerateTopicRequest):
-
+    """
+    Recibe un prompt con la interacción (pregunta + respuesta)
+    y devuelve un topic breve (1-3 palabras) para la conversación.
+    """
     try:
-
-        completion = client.chat.completions.create(
-            model="gpt-4.1-mini",
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",  # o gpt-4 si tienes acceso
             messages=[
-                {"role": "system", "content": "Genera un topic muy breve de 1 a 3 palabras."},
+                {"role": "system", "content": "Eres un generador de topics breves para interacciones de chat."},
                 {"role": "user", "content": req.prompt}
             ],
-            max_tokens=10
+            temperature=0.5,
+            max_tokens=10  # solo queremos un topic muy breve
         )
 
-        topic_text = completion.choices[0].message.content.strip()
-
+        topic_text = response.choices[0].message.content.strip()
         topic_words = topic_text.split()
-        topic_clean = " ".join(topic_words[:3])
+        topic_clean = " ".join(topic_words[:3])  # 1-3 palabras
 
         return {"topic": topic_clean}
 
     except Exception as e:
-        print("Error generando topic:", e)
-        return {"topic": "general"}
+        print("Error generando topic con OpenAI:", e)
+        return {"topic": "general"}  # fallback con logs
