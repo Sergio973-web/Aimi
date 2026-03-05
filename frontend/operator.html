@@ -1,170 +1,247 @@
+```html
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <title>Aimi Panel Operador</title>
+
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
 <style>
-    body {
-        font-family: 'Roboto', sans-serif;
-        background: #f4f7fa;
-        margin: 0;
-        display: flex;
-        flex-direction: column;
-        height: 100vh;
-    }
-    header {
-        background: linear-gradient(90deg, #00c6ff, #0072ff);
-        color: white;
-        padding: 20px;
-        text-align: center;
-        font-size: 2rem;
-        font-weight: 700;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-    main {
-        flex: 1;
-        padding: 20px;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-    }
-    .interaction {
-        background: #fff;
-        border-radius: 15px;
-        padding: 15px 20px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        animation: fadeIn 0.3s ease;
-    }
-    .question {
-        font-weight: 500;
-        color: #333;
-    }
-    .answer {
-        margin-top: 8px;
-        color: #555;
-    }
-    .approve {
-        margin-top: 12px;
-        display: flex;
-        gap: 8px;
-    }
-    .approve button {
-        background: linear-gradient(90deg, #00c6ff, #0072ff);
-        border: none;
-        color: white;
-        padding: 6px 12px;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: transform 0.2s;
-    }
-    .approve button:hover { transform: scale(1.05); }
-    @keyframes fadeIn {
-        from {opacity:0; transform: translateY(10px);}
-        to {opacity:1; transform: translateY(0);}
-    }
-    @media(max-width: 600px){
-        header { font-size: 1.5rem; }
-    }
+
+body{
+    font-family:'Roboto',sans-serif;
+    background:#f4f7fa;
+    margin:0;
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+}
+
+header{
+    background:linear-gradient(90deg,#00c6ff,#0072ff);
+    color:white;
+    padding:20px;
+    text-align:center;
+    font-size:2rem;
+    font-weight:700;
+    box-shadow:0 4px 10px rgba(0,0,0,0.1);
+}
+
+main{
+    flex:1;
+    padding:20px;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:15px;
+}
+
+.interaction{
+    background:#fff;
+    border-radius:15px;
+    padding:15px 20px;
+    box-shadow:0 4px 10px rgba(0,0,0,0.05);
+}
+
+.question{
+    font-weight:500;
+    color:#333;
+}
+
+.answer{
+    margin-top:8px;
+    color:#555;
+}
+
+.approve{
+    margin-top:12px;
+    display:flex;
+    gap:8px;
+}
+
+.approve button{
+    background:linear-gradient(90deg,#00c6ff,#0072ff);
+    border:none;
+    color:white;
+    padding:6px 12px;
+    border-radius:8px;
+    cursor:pointer;
+}
+
+.approve button:hover{
+    transform:scale(1.05);
+}
+
 </style>
+
 </head>
+
 <body>
+
 <header>Aimi Panel Operador</header>
 
 <main id="interactions"></main>
 
 <script>
+
 const container = document.getElementById("interactions");
 const apiBase = "https://aimi-backend-l2u4.onrender.com";
 
-// Función para generar topic automáticamente usando OpenAI
-async function generateTopic(question, answer) {
-    try {
+
+// =============================
+// Generar topic automático
+// =============================
+async function generateTopic(question,answers){
+
+    try{
+
         const prompt = `
-        Genera un topic breve (1-3 palabras) para esta interacción:
+Genera un topic breve (1-3 palabras) para esta interacción.
 
-        Pregunta: ${question}
-        Respuesta: ${answer}
-        Solo devuelve el topic.
-        `;
+Pregunta:
+${question}
 
-        const res = await fetch(`${apiBase}/openai/generate_topic`, { // Debes tener un endpoint que use OpenAI
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt })
+Respuestas:
+${answers.join("\n")}
+`
+
+        const res = await fetch(`${apiBase}/openai/generate_topic`,{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({prompt})
         });
 
         const data = await res.json();
+
         return data.topic || "general";
-    } catch (e) {
-        console.error("Error generando topic:", e);
+
+    }catch(e){
+
+        console.error("Error generando topic",e);
+
         return "general";
+
     }
+
 }
 
-async function loadInteractions() {
-    container.innerHTML = "";
 
-    try {
+// =============================
+// Cargar interacciones
+// =============================
+async function loadInteractions(){
+
+    container.innerHTML="";
+
+    try{
+
         const res = await fetch(`${apiBase}/interactions`);
         const data = await res.json();
 
-        data.forEach(i => {
-            if (i.status !== "stored") return;
+        const grouped = {};
+
+        data.forEach(i=>{
+
+            if(i.status !== "operator_pending") return;
+
+            if(!grouped[i.question]){
+                grouped[i.question] = [];
+            }
+
+            grouped[i.question].push({
+                id:i.id,
+                answer:i.answer
+            });
+
+        });
+
+        for(const question in grouped){
+
+            const answers = grouped[question];
 
             const div = document.createElement("div");
-            div.className = "interaction";
+            div.className="interaction";
 
             div.innerHTML = `
-                <div class="question"><strong>P:</strong> ${i.question}</div>
-                <div class="answer"><strong>R:</strong> ${i.answer}</div>
-                <div class="approve">
-                    <button class="save">Guardar en memoria ✅</button>
-                </div>
+            <div class="question">
+                <strong>P:</strong> ${question}
+            </div>
+
+            <div class="answer">
+                ${answers.map((a,i)=>`
+                    <p><strong>R${i+1}:</strong> ${a.answer}</p>
+                `).join("")}
+            </div>
+
+            <div class="approve">
+                <button class="save">Guardar en memoria</button>
+            </div>
             `;
 
-            div.querySelector(".save").onclick = async () => {
-                try {
-                    // 1️⃣ Generar topic automáticamente
-                    const topic = await generateTopic(i.question, i.answer);
+            div.querySelector(".save").onclick = async ()=>{
 
-                    // 2️⃣ Guardar en backend con topic generado
-                    const resOperator = await fetch(`${apiBase}/operator/approve`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            interaction_id: i.id,
-                            topic
-                        })
-                    });
+                try{
 
-                    if (!resOperator.ok) {
-                        const err = await resOperator.json();
-                        throw new Error(err.detail || resOperator.statusText);
+                    const topic = await generateTopic(
+                        question,
+                        answers.map(a=>a.answer)
+                    );
+
+                    for(const a of answers){
+
+                        await fetch(`${apiBase}/operator/approve`,{
+                            method:"POST",
+                            headers:{
+                                "Content-Type":"application/json"
+                            },
+                            body:JSON.stringify({
+                                interaction_id:a.id,
+                                topic:topic
+                            })
+                        });
+
                     }
 
-                    div.remove(); // 3️⃣ Quitar la tarjeta del DOM
-                    console.log(`Interacción ${i.id} guardada con topic: ${topic}`);
-                } catch (e) {
-                    console.error("Error guardando interacción:", e);
-                    alert("Error guardando la interacción en memoria");
+                    div.remove();
+
+                    console.log("Guardado con topic:",topic);
+
+                }catch(e){
+
+                    console.error(e);
+                    alert("Error guardando interacción");
+
                 }
+
             };
 
             container.appendChild(div);
-        });
 
-    } catch (e) {
-        console.error("Error cargando operador:", e);
+        }
+
+    }catch(e){
+
+        console.error("Error cargando interacciones",e);
+
     }
+
 }
 
-// Cargar al iniciar
+
+// =============================
+// Inicial
+// =============================
 loadInteractions();
 
-// 🔄 Opcional: refrescar cada 500 segundos
-setInterval(loadInteractions, 500000);
+
+// refresco automático
+setInterval(loadInteractions,30000);
+
 </script>
+
 </body>
 </html>
+```
