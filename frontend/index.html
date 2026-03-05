@@ -136,7 +136,7 @@ button {
 <main id="chat"></main>
 
 <footer>
-<input type="text" id="userInput" placeholder="Escribí tu mensaje...">
+<textarea id="userInput" placeholder="Escribí tu mensaje..." rows="2" style="flex:1; padding:12px; border-radius:25px; border:1px solid #ccc; resize:none;"></textarea>
 <button id="sendBtn">Enviar</button>
 </footer>
 
@@ -378,7 +378,7 @@ addMessage("Error conectando con servidor","aimi")
 button.onclick=sendMessage
 
 input.addEventListener("keydown", e => {
-    if (e.key === "Enter" && !e.shift) {
+    if (e.key === "Enter" && !e.shiftKey) {
         // Solo Enter sin Shift → enviar mensaje
         e.preventDefault(); // evita salto de línea
         sendMessage();
