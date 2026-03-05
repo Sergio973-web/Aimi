@@ -169,99 +169,65 @@ localStorage.setItem("aimi_session_id",sessionId)
 FORMATEAR TEXTO + CÓDIGO
 ========================== */
 
-function formatText(text){
+function formatText(text) {
 
-/* ESCAPAR HTML */
+    // ESCAPAR HTML general
+    text = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
 
-text = text
-.replace(/&/g,"&amp;")
-.replace(/</g,"&lt;")
-.replace(/>/g,"&gt;")
+    // BLOQUES DE CÓDIGO ``` ``` o código simple
+    text = text.replace(/```(\w+)?\n([\s\S]*?)```|((?:def |class |return |print\(|console\.log\().*?)/g,
+        function(match, lang, code, simpleCode) {
 
-/* =========================
-BLOQUES DE CÓDIGO ``` ```
-========================= */
+            let content = code || simpleCode;
 
-text = text.replace(/```(\w+)?\n([\s\S]*?)```/g,function(match,lang,code){
+            // Escapar HTML del bloque
+            content = content
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
 
-return `<pre><code class="language-${lang||""}">${code}</code></pre>`
+            // Si todo está en una línea, intentar reinyectar saltos de línea mínimos
+            content = content.replace(/;|:/g, "$&\n");
 
-})
+            // Detectar lenguaje
+            if (!lang) {
+                if (content.includes("def ") || content.includes("class ")) lang = "python";
+                else if (content.includes("console.log") || content.includes("function ")) lang = "javascript";
+                else lang = "";
+            }
 
-/* =========================
-DETECTAR CÓDIGO SIMPLE
-========================= */
-if(
-  text.includes("def ") ||
-  text.includes("return ") ||
-  text.includes("print(") ||
-  text.includes("console.log(")
-){
-  if(!text.includes("<pre>")){
-    // Escapar HTML
-    const escapedText = text
-      .replace(/&/g,"&amp;")
-      .replace(/</g,"&lt;")
-      .replace(/>/g,"&gt;");
+            return `<pre><code class="language-${lang}">${content}</code></pre>`;
+        });
 
-    // Agregar clase para que respete saltos y sangría
-    text = `<pre style="white-space: pre-wrap;"><code class="language-python">${escapedText}</code></pre>`;
-  }
+    // NEGRITAS
+    text = text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+    // SUBTÍTULOS
+    text = text.replace(/^🔹\s*(.+)$/gm, "<h4>$1</h4>");
+
+    // LISTAS
+    const lines = text.split("\n");
+    let html = "";
+    let inList = false;
+
+    lines.forEach(line => {
+        line = line.trim();
+        if (line.match(/^(\-|\*)\s+/)) {
+            if (!inList) { html += "<ul>"; inList = true; }
+            html += `<li>${line.replace(/^(\-|\*)\s+/, "")}</li>`;
+        } else {
+            if (inList) { html += "</ul>"; inList = false; }
+            html += `<p>${line}</p>`;
+        }
+    });
+
+    if (inList) html += "</ul>";
+
+    return html;
 }
-/* =========================
-NEGRITAS
-========================= */
-
-text = text.replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")
-
-/* =========================
-SUBTITULOS
-========================= */
-
-text = text.replace(/^🔹\s*(.+)$/gm,"<h4>$1</h4>")
-
-/* =========================
-LISTAS
-========================= */
-
-const lines = text.split("\n")
-
-let html=""
-let inList=false
-
-lines.forEach(line=>{
-
-line=line.trim()
-
-if(line.match(/^(\-|\*)\s+/)){
-
-if(!inList){
-html+="<ul>"
-inList=true
-}
-
-html+=`<li>${line.replace(/^(\-|\*)\s+/,"")}</li>`
-
-}
-else{
-
-if(inList){
-html+="</ul>"
-inList=false
-}
-
-html+=`<p>${line}</p>`
-
-}
-
-})
-
-if(inList) html+="</ul>"
-
-return html
-
-}
-
 
 /* ==========================
 COPIAR CÓDIGO
