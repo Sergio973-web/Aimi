@@ -107,7 +107,8 @@ def auto_format_code(text: str) -> str:
     """
     Detecta automáticamente si el texto contiene código y cuál es el lenguaje.
     Envuelve en bloques Markdown ``` con el lenguaje detectado.
-    Intenta mejorar indentación para Python y JS.
+    Reinyecta saltos de línea y mejora indentación para Python y JS.
+    También limpia código inline y lo prepara para Highlight.js.
     """
     if "```" in text:
         return text  # Ya está formateado
@@ -131,21 +132,21 @@ def auto_format_code(text: str) -> str:
             r";$",
             r"\bconst\b",
             r"\blet\b",
-            r"\bvar\b",
+            r"\bvar\b"
         ],
         "java": [
             r"public\s+class\s+\w+",
-            r"System\.out\.println\(",
+            r"System\.out\.println\("
         ],
         "c": [
             r"#include\s+<.*>",
             r"printf\(",
-            r"int\s+main\s*\(",
+            r"int\s+main\s*\("
         ],
         "cpp": [
             r"#include\s+<.*>",
             r"std::cout",
-            r"int\s+main\s*\(",
+            r"int\s+main\s*\("
         ],
         "bash": [
             r"#!/bin/bash",
@@ -181,18 +182,33 @@ def auto_format_code(text: str) -> str:
         if detected_language:
             break
 
-    if detected_language:
-        lines = text.splitlines()
-        cleaned_lines = [line.rstrip() for line in lines if line.strip() != ""]
-        cleaned_text = "\n".join(cleaned_lines)
+    # Si no se detecta lenguaje, retornar como texto plano
+    if not detected_language:
+        return text
 
-        if detected_language in ["python", "javascript"]:
-            cleaned_text = textwrap.dedent(cleaned_text)
+    cleaned_text = text.strip()
 
-        return f"```{detected_language}\n{cleaned_text}\n```"
+    # Ajustes por lenguaje
+    if detected_language == "python":
+        # Insertar saltos de línea después de ':' si no hay
+        cleaned_text = re.sub(r":(?!\n)", ":\n    ", cleaned_text)
+        # Saltos antes de return si está en la misma línea
+        cleaned_text = re.sub(r"\breturn\s+", "\n    return ", cleaned_text)
+        cleaned_text = textwrap.dedent(cleaned_text)
 
-    return text
+    elif detected_language == "javascript":
+        # Saltos después de ';'
+        cleaned_text = re.sub(r";(?!\n)", ";\n", cleaned_text)
+        cleaned_text = textwrap.dedent(cleaned_text)
 
+    elif detected_language in ["java", "c", "cpp", "bash", "html", "css", "sql"]:
+        # Para otros lenguajes, solo limpiar líneas vacías y dedent
+        lines = cleaned_text.splitlines()
+        cleaned_text = "\n".join([line.rstrip() for line in lines if line.strip() != ""])
+        cleaned_text = textwrap.dedent(cleaned_text)
+
+    # Envolver en bloque Markdown
+    return f"```{detected_language}\n{cleaned_text}\n```"
 
 # ==========================
 # ENDPOINT CHAT
