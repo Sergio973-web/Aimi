@@ -192,39 +192,25 @@ async function loadInteractions() {
             div.classList.add("interaction");
             div.dataset.id = interaction.id;
 
-            // Usar textContent en vez de innerHTML para evitar que se muestre texto duplicado como "Copiar"
-            div.appendChild(document.createElement("div")).className = "question";
-            div.querySelector(".question").textContent = "P: " + interaction.question;
-
-            const answerDiv = document.createElement("div");
-            answerDiv.className = "answer";
-            // Asumiendo que formatTextVerificador devuelve string con HTML, si es así, mejor asignar con innerHTML con cuidado
-            // Si quieres evitar que se muestren botones "Copiar" o texto extra dentro del código, revisa que no haya append de botones extra fuera del render esperado.
-            answerDiv.innerHTML = formatTextVerificador(interaction.answer);
-            div.appendChild(answerDiv);
-
-            // Crear contenedor estrellas
-            const starsDiv = document.createElement("div");
-            starsDiv.className = "stars";
-            starsDiv.innerHTML = `
-                <button data-stars="1">⭐ 1</button>
-                <button data-stars="2">⭐⭐ 2</button>
-                <button data-stars="3">⭐⭐⭐ 3</button>
+            div.innerHTML = `
+                <div class="question">P: ${interaction.question}</div>
+                <div class="answer">R: ${formatTextVerificador(interaction.answer)}</div>
+                <div class="stars">
+                    <button data-stars="1">⭐ 1</button>
+                    <button data-stars="2">⭐⭐ 2</button>
+                    <button data-stars="3">⭐⭐⭐ 3</button>
+                </div>
+                <div class="feedback"></div>
             `;
-            div.appendChild(starsDiv);
-
-            // Feedback
-            div.appendChild(document.createElement("div")).className = "feedback";
-
             container.appendChild(div);
 
-            // Resaltar código dentro del answerDiv
-            answerDiv.querySelectorAll('pre code').forEach(block=>{
+            // Resaltar código
+            div.querySelectorAll('pre code').forEach(block=>{
                 hljs.highlightElement(block);
             });
 
             // Botones de estrellas
-            starsDiv.querySelectorAll("button").forEach(btn => {
+            div.querySelectorAll(".stars button").forEach(btn => {
                 btn.addEventListener("click", async () => {
                     const stars = parseInt(btn.dataset.stars);
                     const id = interaction.id;
@@ -251,8 +237,6 @@ async function loadInteractions() {
             });
         }
     });
-}
-
 
     // Agregar botones de copiar
     addCopyButtons();
