@@ -166,14 +166,30 @@ Reglas estrictas:
 # =========================
 @app.get("/interactions")
 async def get_interactions():
+
     with get_db() as conn:
         with conn.cursor() as cur:
+
             cur.execute("""
-                SELECT *
+                SELECT id, question, answer, status, topic
                 FROM interactions
                 ORDER BY id DESC;
             """)
-            return cur.fetchall()
+
+            rows = cur.fetchall()
+
+            interactions = []
+
+            for row in rows:
+                interactions.append({
+                    "id": row[0],
+                    "question": row[1],
+                    "answer": row[2],
+                    "status": row[3],
+                    "topic": row[4]
+                })
+
+            return interactions
 
 
 # =========================
@@ -272,8 +288,12 @@ async def operator_approve(a: OperatorApprove):
 
     return {"ok": True}
 
+# =========================
+# GENERAR TOPIC AUTOMÁTICO (OPERADOR)
+# =========================
 import openai
 
+# Configura tu API Key de OpenAI en tu entorno o en .env
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 class GenerateTopicRequest(BaseModel):
@@ -296,12 +316,15 @@ async def generate_topic(req: GenerateTopicRequest):
             max_tokens=10  # solo queremos un topic muy breve
         )
 
+        # Extraer el texto de la respuesta
         topic_text = response.choices[0].message.content.strip()
+
+        # Limitar a 1-3 palabras (opcional, limpieza extra)
         topic_words = topic_text.split()
-        topic_clean = " ".join(topic_words[:3])  # 1-3 palabras
+        topic_clean = " ".join(topic_words[:3])
 
         return {"topic": topic_clean}
 
     except Exception as e:
         print("Error generando topic con OpenAI:", e)
-        return {"topic": "general"}  # fallback con logs
+        return {"topic": "general"}  # fallback
