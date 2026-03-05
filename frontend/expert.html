@@ -114,6 +114,40 @@
         transform: translateY(0);
     }
 
+    pre {
+        background: #282c34;
+        color: #abb2bf;
+        padding: 15px;
+        border-radius: 8px;
+        overflow-x: auto;
+        position: relative;
+        font-family: 'Fira Code', monospace;
+        font-size: 0.9rem;
+        line-height: 1.4;
+        margin-top: 10px;
+        white-space: pre-wrap;
+    }
+
+    button.copy-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: #61afef;
+        border: none;
+        color: white;
+        padding: 6px 10px;
+        border-radius: 5px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        opacity: 0.8;
+        transition: opacity 0.3s;
+        z-index: 10;
+    }
+
+    button.copy-btn:hover {
+        opacity: 1;
+    }
+
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(10px); }
         to   { opacity: 1; transform: translateY(0); }
@@ -133,8 +167,36 @@
 <main id="interactions"></main>
 
 <script>
+function escapeHtml(text) {
+    return text.replace(/&/g, "&amp;")
+               .replace(/</g, "&lt;")
+               .replace(/>/g, "&gt;")
+               .replace(/"/g, "&quot;")
+               .replace(/'/g, "&#39;");
+}
+
 const apiBase = "https://aimi-backend-l2u4.onrender.com";
 const container = document.getElementById("interactions");
+
+function createCodeBlock(codeStr, lang) {
+    const pre = document.createElement("pre");
+    const code = document.createElement("code");
+    code.className = "language-" + lang + " hljs";
+    code.innerHTML = escapeHtml(codeStr);
+    pre.appendChild(code);
+
+    const btn = document.createElement("button");
+    btn.className = "copy-btn";
+    btn.textContent = "Copiar";
+    btn.addEventListener("click", () => {
+        navigator.clipboard.writeText(codeStr).then(() => {
+            btn.textContent = "Copiado!";
+            setTimeout(() => { btn.textContent = "Copiar"; }, 1500);
+        });
+    });
+    pre.appendChild(btn);
+    return pre;
+}
 
 async function loadInteractions() {
     container.innerHTML = "";
@@ -149,70 +211,77 @@ async function loadInteractions() {
             const div = document.createElement("div");
             div.className = "interaction";
 
-            div.innerHTML = `
-                <div class="question">P: ${i.question}</div>
-                <div class="answer">R: ${i.answer}</div>
+            // Escape question and answer text
+            const questionP = document.createElement("p");
+            questionP.className = "question";
+            questionP.textContent = "P: " + i.question;
 
-                <div class="actions">
-                    <button class="reject">❌ Rechazar</button>
-                    <button class="approve">✅ Aprobar</button>
-                </div>
+            const answerP = document.createElement("p");
+            answerP.className = "answer";
+            answerP.textContent = "R: " + i.answer;
 
-                <div class="feedback"></div>
-            `;
+            div.appendChild(questionP);
+            div.appendChild(answerP);
 
-            const feedback = div.querySelector(".feedback");
+            // Detect simple code in the answer (``` or inline)
+            const codeBlockMatch = i.answer.match(/```(\w*)\n([\s\S]*?)```/);
+            if (codeBlockMatch) {
+                const lang = codeBlockMatch[1] || "javascript";
+                const codeStr = codeBlockMatch[2];
+                div.appendChild(createCodeBlock(codeStr, lang));
+            }
 
-            // ✅ APROBAR
-            div.querySelector(".approve").onclick = async () => {
+            const feedback = document.createElement("div");
+            feedback.className = "feedback";
+            div.appendChild(feedback);
+
+            // Actions buttons
+            const actionsDiv = document.createElement("div");
+            actionsDiv.className = "actions";
+            const approveBtn = document.createElement("button");
+            approveBtn.className = "approve";
+            approveBtn.textContent = "✅ Aprobar";
+            const rejectBtn = document.createElement("button");
+            rejectBtn.className = "reject";
+            rejectBtn.textContent = "❌ Rechazar";
+            actionsDiv.appendChild(rejectBtn);
+            actionsDiv.appendChild(approveBtn);
+            div.appendChild(actionsDiv);
+
+            approveBtn.onclick = async () => {
                 try {
-                    // ✅ PASAR A OPERADOR (solo actualizar status a operator_pending)
                     const resExpert = await fetch(`${apiBase}/expert/approve`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ interaction_id: Number(i.id) })
                     });
-
-                    if (!resExpert.ok) {
-                        const err = await resExpert.json();
-                        throw new Error(err.detail || resExpert.statusText);
-                    }
-
+                    if (!resExpert.ok) throw new Error("Error aprobando");
                     feedback.textContent = "✔ Aprobado y enviado a operador";
                     feedback.style.color = "#27ae60";
                     feedback.classList.add("show");
-
-                    // Quitar la tarjeta del panel Experto
                     setTimeout(() => div.remove(), 600);
-
                 } catch (e) {
-                    console.error("Error aprobando en experto:", e);
+                    console.error(e);
                     feedback.textContent = "❌ Error al aprobar";
                     feedback.style.color = "#c0392b";
                     feedback.classList.add("show");
                 }
             };
 
-            // ❌ RECHAZAR
-            div.querySelector(".reject").onclick = async () => {
+            rejectBtn.onclick = async () => {
                 try {
-                    const interactionId = Number(i.id);
-                    const res = await fetch(`${apiBase}/expert/reject`, {
+                    const resExpert = await fetch(`${apiBase}/expert/reject`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ interaction_id: interactionId })
+                        body: JSON.stringify({ interaction_id: Number(i.id) })
                     });
-
-                    if (!res.ok) throw new Error("Error en expert/reject");
-
+                    if (!resExpert.ok) throw new Error("Error rechazando");
                     feedback.textContent = "✖ Rechazado";
                     feedback.style.color = "#c0392b";
                     feedback.classList.add("show");
-
                     setTimeout(() => div.remove(), 600);
-
                 } catch (e) {
-                    console.error("Error rechazando interacción:", e);
+                    console.error(e);
                     feedback.textContent = "❌ Error al rechazar";
                     feedback.style.color = "#c0392b";
                     feedback.classList.add("show");
@@ -221,17 +290,13 @@ async function loadInteractions() {
 
             container.appendChild(div);
         });
-
     } catch (e) {
         console.error("Error cargando panel experto:", e);
     }
 }
 
-// Cargar al iniciar
 loadInteractions();
-// Refrescar cada 3 segundos
 setInterval(loadInteractions, 50000);
-
 </script>
 
 </body>
