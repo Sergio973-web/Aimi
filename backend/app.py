@@ -97,47 +97,35 @@ def classify_intent(text: str) -> str:
 # ==========================
 # Endpoints
 # ==========================
-# ==========================
-# AUTO FORMAT CODE
-# ==========================
+
 import re
 import textwrap
 
 def auto_format_code(text: str) -> str:
-    """
-    Detecta código Python o JavaScript y lo formatea para Markdown.
-    - Ajusta indentación para Python.
-    - Limpia líneas vacías.
-    - Devuelve código envuelto en ```python o ```javascript.
-    """
     text = text.strip()
-    
+
     if "```" in text:
-        return text  # Ya está formateado
+        return text
 
-    # Detectar lenguaje
-    lang = None
-    if re.search(r"\bdef\s+\w+\(|\bclass\s+\w+|print\(|return\s+", text):
-        lang = "python"
-    elif re.search(r"function\s+\w+\(|console\.log\(|\bconst\b|\bvar\b|\blet\b", text):
-        lang = "javascript"
-    
-    if not lang:
-        return text  # No se detectó lenguaje, devolver texto plano
+    # detectar python
+    if not re.search(r"\bdef\s+\w+\(|print\(|return\s+", text):
+        return text
 
-    # Limpiar líneas vacías
-    lines = [line.rstrip() for line in text.splitlines() if line.strip() != ""]
-    cleaned_text = "\n".join(lines)
-    
-    # Ajustes para Python
-    if lang == "python":
-        cleaned_text = textwrap.dedent(cleaned_text)
-        # Asegurarse de saltos de línea después de ':'
-        cleaned_text = re.sub(r":(?!\n)", ":\n    ", cleaned_text)
-        # Ajustar return si está en la misma línea
-        cleaned_text = re.sub(r"\breturn\s+", "\n    return ", cleaned_text)
+    # separar instrucciones en la misma línea
+    text = text.replace(";", "\n")
 
-    return f"```{lang}\n{cleaned_text}\n```"
+    # arreglar casos como bresultado
+    text = re.sub(r"([a-zA-Z0-9_])resultado", r"\1\nresultado", text)
+
+    # saltos después de :
+    text = re.sub(r":(?!\n)", ":\n    ", text)
+
+    # return en nueva línea
+    text = re.sub(r"\breturn\s+", "\n    return ", text)
+
+    cleaned = textwrap.dedent(text)
+
+    return f"```python\n{cleaned}\n```"
 
 # ==========================
 # ENDPOINT CHAT
