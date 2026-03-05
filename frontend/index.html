@@ -378,7 +378,7 @@ addMessage("Error conectando con servidor","aimi")
 button.onclick=sendMessage
 
 input.addEventListener("keydown", e => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shift) {
         // Solo Enter sin Shift → enviar mensaje
         e.preventDefault(); // evita salto de línea
         sendMessage();
