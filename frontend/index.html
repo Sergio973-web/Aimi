@@ -180,24 +180,20 @@ return `<pre><code class="language-${lang||""}">${code}</code></pre>`
 
 /* =========================
 DETECTAR CÓDIGO SIMPLE
-ej:
-def hola():
-print("hola")
 ========================= */
-
 if(
-text.includes("def ") ||
-text.includes("return ") ||
-text.includes("print(") ||
-text.includes("console.log(")
+  (text.includes("def ") || text.includes("return ") || text.includes("print(")) ||
+  (text.includes("console.log("))
 ){
+  if(!text.includes("<pre>")){
+    // Respetar saltos de línea
+    const escapedText = text
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;");
 
-if(!text.includes("<pre>")){
-
-text = `<pre><code class="language-python">${text}</code></pre>`
-
-}
-
+    text = `<pre><code class="language-python">${escapedText}</code></pre>`;
+  }
 }
 
 /* =========================
