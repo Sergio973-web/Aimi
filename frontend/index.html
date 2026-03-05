@@ -168,7 +168,6 @@ localStorage.setItem("aimi_session_id",sessionId)
 /* ==========================
 FORMATEAR TEXTO + CÓDIGO
 ========================== */
-
 function formatText(text) {
 
     // ESCAPAR HTML general
@@ -177,35 +176,29 @@ function formatText(text) {
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
 
-    // BLOQUES DE CÓDIGO ``` ``` o código simple
+    // BLOQUES DE CÓDIGO ``` ```
     text = text.replace(/```(\w*)\s*([\s\S]*?)```/g, function(match, lang, code) {
-            // Limpiar posibles espacios iniciales/finales
-            code = code.trim();
-            return `<pre><code class="language-${lang || ''}">${code}</code></pre>`;
-        });
-    
-        function(match, lang, code, simpleCode) {
+        code = code.trim();
+        return `<pre><code class="language-${lang || ''}">${code}</code></pre>`;
+    });
 
-            let content = code || simpleCode;
+    // DETECTAR CÓDIGO SIMPLE (una línea)
+    const simpleCodePatterns = ["def ", "class ", "print(", "return ", "console.log", "function "];
+    if (!text.includes("<pre>") && simpleCodePatterns.some(p => text.includes(p))) {
 
-            // Escapar HTML del bloque
-            content = content
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;");
+        // Escapar HTML
+        let content = text.trim();
 
-            // Si todo está en una línea, intentar reinyectar saltos de línea mínimos
-            content = content.replace(/;|:/g, "$&\n");
+        // Insertar saltos de línea mínimos para lectura
+        content = content.replace(/;/g, ";\n").replace(/:/g, ":\n");
 
-            // Detectar lenguaje
-            if (!lang) {
-                if (content.includes("def ") || content.includes("class ")) lang = "python";
-                else if (content.includes("console.log") || content.includes("function ")) lang = "javascript";
-                else lang = "";
-            }
+        // Detectar lenguaje
+        let lang = "";
+        if (content.includes("def ") || content.includes("class ")) lang = "python";
+        else if (content.includes("console.log") || content.includes("function ")) lang = "javascript";
 
-            return `<pre><code class="language-${lang}">${content}</code></pre>`;
-        });
+        text = `<pre><code class="language-${lang}">${content}</code></pre>`;
+    }
 
     // NEGRITAS
     text = text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
@@ -228,7 +221,6 @@ function formatText(text) {
             html += `<p>${line}</p>`;
         }
     });
-
     if (inList) html += "</ul>";
 
     return html;
