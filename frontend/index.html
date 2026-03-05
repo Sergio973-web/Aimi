@@ -177,44 +177,37 @@ localStorage.setItem("aimi_session_id",sessionId)
 FORMATEAR TEXTO + CÓDIGO
 ========================== */
 function formatText(text) {
-
-    // ESCAPAR HTML general
+    // === LIMPIAR HTML extraño de la IA ===
     text = text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+        .replace(/<p>/g, "")
+        .replace(/<\/p>/g, "\n")
+        .replace(/<strong>/g, "")
+        .replace(/<\/strong>/g, "")
+        .trim();
 
-    // BLOQUES DE CÓDIGO ``` ```
-    text = text.replace(/```(\w*)\s*([\s\S]*?)```/g, function(match, lang, code) {
-        code = escapeHTML(code.trim());  // <-- ESCAPAR HTML
-        return `<pre><code class="language-${lang || ''} hljs">${code}</code></pre>`;
-    });
-
-    // DETECTAR CÓDIGO SIMPLE (una línea)
-    const simpleCodePatterns = ["def ", "class ", "print(", "return ", "console.log", "function "];
-    if (!text.includes("<pre>") && simpleCodePatterns.some(p => text.includes(p))) {
-
-        // Escapar HTML
-        let content = text.trim();
-
-        // Insertar saltos de línea mínimos para lectura
-        content = content.replace(/;/g, ";\n").replace(/:/g, ":\n");
-
-        // Detectar lenguaje
-        let lang = "";
-        if (content.includes("def ") || content.includes("class ")) lang = "python";
-        else if (content.includes("console.log") || content.includes("function ")) lang = "javascript";
-
-        text = `<pre><code class="language-${lang}">${content}</code></pre>`;
+    // === Extraer contenido de bloques Markdown si vienen ===
+    if (text.startsWith("```")) {
+        const match = text.match(/```(\w*)\n([\s\S]*?)```/);
+        if (match) {
+            const lang = match[1] || "";
+            const code = match[2].trim();
+            return `<pre><code class="language-${lang} hljs">${escapeHTML(code)}</code></pre>`;
+        }
     }
 
-    // NEGRITAS
-    text = text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+    // === Detectar código simple de una línea ===
+    const simpleCodePatterns = ["def ", "class ", "print(", "return ", "console.log", "function "];
+    if (simpleCodePatterns.some(p => text.includes(p))) {
+        let lang = "";
+        if (text.includes("def ") || text.includes("class ")) lang = "python";
+        else if (text.includes("console.log") || text.includes("function ")) lang = "javascript";
 
-    // SUBTÍTULOS
-    text = text.replace(/^🔹\s*(.+)$/gm, "<h4>$1</h4>");
+        // Insertar saltos de línea para separar instrucciones
+        let content = text.replace(/;/g, ";\n").replace(/:/g, ":\n").trim();
+        return `<pre><code class="language-${lang} hljs">${escapeHTML(content)}</code></pre>`;
+    }
 
-    // LISTAS
+    // === Texto normal: convertir saltos de línea en <p> ===
     const lines = text.split("\n");
     let html = "";
     let inList = false;
@@ -229,9 +222,19 @@ function formatText(text) {
             html += `<p>${line}</p>`;
         }
     });
-    if (inList) html += "</ul>";
 
+    if (inList) html += "</ul>";
     return html;
+}
+
+// Función para escapar HTML
+function escapeHTML(str) {
+    return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 /* ==========================
@@ -270,7 +273,6 @@ pre.appendChild(btn)
 /* ==========================
 MENSAJES
 ========================== */
-
 function addMessage(text, cls) {
     const div = document.createElement("div");
     div.className = "message " + cls;
@@ -278,35 +280,35 @@ function addMessage(text, cls) {
     // === DEBUG: ver qué texto llega desde la IA ===
     console.log("Texto original recibido:", text);
 
-    // === LIMPIAR <p> innecesarios que vienen de la IA ===
-    text = text.replace(/<p>/g, "").replace(/<\/p>/g, "\n").trim();
+    // === Limpiar HTML extraño antes de formatear ===
+    text = text
+        .replace(/<p>/g, "")
+        .replace(/<\/p>/g, "\n")
+        .replace(/<strong>/g, "")
+        .replace(/<\/strong>/g, "")
+        .trim();
 
-    // === Formatear texto y bloques de código ===
+    // === Formatear el texto ===
     div.innerHTML = formatText(text);
 
     chatContainer.appendChild(div);
 
     // === Resaltar bloques de código de forma segura ===
     div.querySelectorAll('pre code').forEach((block, idx) => {
-        // DEBUG: ver contenido de cada bloque antes de resaltar
-        console.log(`Bloque ${idx} contenido antes de escapar:`, block.innerHTML);
+        // DEBUG: contenido antes de escapar
+        console.log(`Bloque ${idx} antes de escapar:`, block.innerHTML);
 
-        // Escapar HTML para seguridad
-        block.innerHTML = block.innerHTML
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+        // Escapar HTML por seguridad
+        block.innerHTML = escapeHTML(block.innerHTML);
 
-        // Resetear resaltado previo si existía
+        // Resetear resaltado previo
         delete block.dataset.highlighted;
 
         // Aplicar Highlight.js
         hljs.highlightElement(block);
 
-        // DEBUG: ver contenido final del bloque
-        console.log(`Bloque ${idx} contenido después de escapar y resaltar:`, block.innerHTML);
+        // DEBUG: contenido final del bloque
+        console.log(`Bloque ${idx} después de resaltar:`, block.innerHTML);
     });
 
     // === Agregar botones de copiar ===
