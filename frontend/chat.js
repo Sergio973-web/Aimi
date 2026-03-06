@@ -98,8 +98,6 @@ function addCopyButtons() {
     });
 }
 
-// ==========================
-// MENSAJES
 function addMessage(text, cls) {
     const div = document.createElement("div");
     div.className = "message " + cls;
@@ -111,12 +109,15 @@ function addMessage(text, cls) {
         </a>`
     );
 
+    // === Formatear el texto primero ===
+    let html = formatText(text);
+
     // === Detectar URLs normales y hacerlas clickeables ===
-    text = text.replace(/(https?:\/\/[^\s]+)/g, (url) => {
+    html = html.replace(/(https?:\/\/[^\s<]+)/g, (url) => {
         return `<a href="${url}" target="_blank">${url}</a>`;
     });
 
-    div.innerHTML = formatText(text);
+    div.innerHTML = html;
 
     chatContainer.appendChild(div);
 
