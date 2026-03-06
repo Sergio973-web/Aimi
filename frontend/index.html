@@ -94,14 +94,15 @@ pre {
 }
 
 footer {
-    padding: 10px 20px;
+    padding: 10px 15px;
     background: #fff;
     display: flex;
     gap: 10px;
-    position: sticky; /* o fixed si querés que siempre quede pegado */
+    position: sticky; /* o fixed */
     bottom: 0;
     left: 0;
     width: 100%;
+    box-sizing: border-box; /* evita desbordes */
     z-index: 100;
 }
 
@@ -114,6 +115,17 @@ textarea {
     overflow: hidden;
     min-height: 40px;
     max-height: 150px;
+    box-sizing: border-box; /* muy importante */
+}
+
+button {
+    padding: 12px 20px;
+    border-radius: 25px;
+    border: none;
+    background: linear-gradient(90deg, #4a90e2, #50e3c2);
+    color: white;
+    cursor: pointer;
+    flex-shrink: 0; /* evita que se encoja y se salga */
 }
 
 input {
@@ -121,15 +133,6 @@ input {
     padding: 12px;
     border-radius: 25px;
     border: 1px solid #ccc;
-}
-
-button {
-    background: linear-gradient(90deg, #4a90e2, #50e3c2);
-    color: white;
-    border: none;
-    border-radius: 25px;
-    padding: 12px 20px;
-    cursor: pointer;
 }
 
 .progress-container {
