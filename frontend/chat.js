@@ -173,6 +173,12 @@ async function sendMessage() {
 
 // ==========================
 // EVENTOS
+input.addEventListener("focus", () => {
+    setTimeout(() => {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }, 300);
+});
+
 input.addEventListener("keydown", e => {
     if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();

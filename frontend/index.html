@@ -11,6 +11,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
 <style>
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
 body {
     font-family: 'Roboto', sans-serif;
     background: #f4f7fa;
@@ -30,7 +38,7 @@ header {
 }
 
 main {
-    flex: 1;
+    flex: 1 1 auto;   /* crecer y encoger según altura disponible */
     padding: 20px;
     overflow-y: auto;
     display: flex;
@@ -90,6 +98,22 @@ footer {
     background: #fff;
     display: flex;
     gap: 10px;
+    position: sticky; /* o fixed si querés que siempre quede pegado */
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 100;
+}
+
+textarea {
+    flex: 1;
+    padding: 12px;
+    border-radius: 25px;
+    border: 1px solid #ccc;
+    resize: none;
+    overflow: hidden;
+    min-height: 40px;
+    max-height: 150px;
 }
 
 input {
