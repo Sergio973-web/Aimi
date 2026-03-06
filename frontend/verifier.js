@@ -132,29 +132,29 @@ function addCopyButtons() {
 const clearAllBtn = document.getElementById("clearAllBtn");
 
 clearAllBtn.addEventListener("click", async () => {
-    if (!confirm("¿Seguro que querés eliminar todas las conversaciones de la base de datos?")) return;
+    if (!confirm("¿Seguro que querés eliminar todas las conversaciones?")) return;
 
     try {
-        // Endpoint que borre todas las conversaciones
-        const res = await fetch(`${apiBase}/clear_conversations`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ session_id: sessionId }) // opcional según backend
-        });
+        // 1️⃣ Obtener todas las interacciones
+        const interactions = await fetch(`${apiBase}/interactions`).then(r => r.json());
 
-        if (!res.ok) {
-            const err = await res.text();
-            console.error("❌ Error al borrar en backend:", err);
-            alert("Error al eliminar conversaciones en el servidor.");
-            return;
+        // 2️⃣ Filtrar solo las pendientes
+        const pending = interactions.filter(inter => inter.status === "pending");
+
+        // 3️⃣ Eliminar cada una usando tu endpoint de estrellas
+        for (const inter of pending) {
+            await fetch(`${apiBase}/vote/verifier`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ interaction_id: inter.id, stars: 1 })
+            });
         }
 
-        // Limpiar DOM
+        // 4️⃣ Limpiar el DOM y el historial local
         container.innerHTML = "";
         conversationHistory = [];
 
-        console.log("🗑️ Todas las conversaciones eliminadas del servidor y del DOM.");
-        alert("Todas las conversaciones fueron eliminadas correctamente.");
+        alert("🗑️ Todas las conversaciones pendientes fueron eliminadas correctamente.");
 
     } catch (e) {
         console.error("🔥 Error de conexión:", e);
