@@ -1,48 +1,167 @@
-const API = "https://aimi-backend-l2u4.onrender.com/chat";
-
-const chat = document.getElementById("chat");
+const chatContainer = document.getElementById("chat");
 const input = document.getElementById("userInput");
+const button = document.getElementById("sendBtn");
+const apiBase = "https://aimi-backend-l2u4.onrender.com";
 
-function add(text, cls) {
-  const div = document.createElement("div");
-  div.className = "message " + cls;
-  div.textContent = text;
-  chat.appendChild(div);
-  chat.scrollTop = chat.scrollHeight;
+let sessionId = localStorage.getItem("aimi_session_id");
+if (!sessionId) {
+    sessionId = crypto.randomUUID();
+    localStorage.setItem("aimi_session_id", sessionId);
 }
 
-async function send() {
-  const text = input.value.trim();
-  if (!text) return;
+let conversationHistory = [];
 
-  add(text, "user");
-  input.value = "";
+// ==========================
+function escapeHTML(str) {
+    return str.replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;")
+              .replace(/"/g, "&quot;")
+              .replace(/'/g, "&#039;");
+}
 
-  console.log("➡️ Enviando:", text);
+function similarity(a, b) {
+    const wa = new Set(a.toLowerCase().split(/\W+/));
+    const wb = new Set(b.toLowerCase().split(/\W+/));
+    const inter = [...wa].filter(x => wb.has(x)).length;
+    return inter / Math.max(wa.size, wb.size);
+}
 
-  try {
-    const res = await fetch(API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text })
+function verificarSiEsNecesario(nuevoMensaje) {
+    const THRESHOLD_SIMILARIDAD = 0.7;
+    return conversationHistory.some((h, idx) => {
+        return h.role === "user" &&
+               similarity(nuevoMensaje, h.content) >= THRESHOLD_SIMILIDAD &&
+               conversationHistory[idx + 1] &&
+               conversationHistory[idx + 1].role === "assistant";
     });
+}
 
-    console.log("⬅️ Status:", res.status);
+// ==========================
+// FORMATEAR TEXTO + CÓDIGO
+function formatText(text) {
+    text = text.replace(/<p>/g, "")
+               .replace(/<\/p>/g, "\n")
+               .replace(/<strong>/g, "")
+               .replace(/<\/strong>/g, "")
+               .trim();
 
-    if (!res.ok) {
-      const err = await res.text();
-      console.error("❌ Error backend:", err);
-      add("Error del servidor", "aimi");
-      return;
+    if (text.startsWith("```")) {
+        const match = text.match(/```(\w*)\n([\s\S]*?)```/);
+        if (match) {
+            const lang = match[1] || "";
+            const code = match[2].trim();
+            return `<pre><code class="language-${lang} hljs">${escapeHTML(code)}</code></pre>`;
+        }
     }
 
-    const data = await res.json();
-    console.log("✅ Respuesta:", data);
+    const simpleCodePatterns = ["def ", "class ", "print(", "return ", "console.log", "function "];
+    if (simpleCodePatterns.some(p => text.includes(p))) {
+        let lang = "";
+        if (text.includes("def ") || text.includes("class ")) lang = "python";
+        else if (text.includes("console.log") || text.includes("function ")) lang = "javascript";
+        let content = text.replace(/;/g, ";\n").replace(/:/g, ":\n").trim();
+        return `<pre><code class="language-${lang} hljs">${escapeHTML(content)}</code></pre>`;
+    }
 
-    add(data.answer, "aimi");
-
-  } catch (e) {
-    console.error("🔥 Error conexión:", e);
-    add("No se pudo conectar al servidor", "aimi");
-  }
+    const lines = text.split("\n");
+    let html = "";
+    let inList = false;
+    lines.forEach(line => {
+        line = line.trim();
+        if (line.match(/^(\-|\*)\s+/)) {
+            if (!inList) { html += "<ul>"; inList = true; }
+            html += `<li>${line.replace(/^(\-|\*)\s+/, "")}</li>`;
+        } else {
+            if (inList) { html += "</ul>"; inList = false; }
+            html += `<p>${line}</p>`;
+        }
+    });
+    if (inList) html += "</ul>";
+    return html;
 }
+
+// ==========================
+// COPIAR CÓDIGO
+function addCopyButtons() {
+    document.querySelectorAll("pre").forEach(pre => {
+        if (pre.querySelector(".copy-btn")) return;
+        const btn = document.createElement("button");
+        btn.innerText = "Copiar";
+        btn.className = "copy-btn";
+        btn.onclick = () => {
+            navigator.clipboard.writeText(pre.innerText);
+            btn.innerText = "Copiado!";
+            setTimeout(() => btn.innerText = "Copiar", 1500);
+        }
+        pre.appendChild(btn);
+    });
+}
+
+// ==========================
+// MENSAJES
+function addMessage(text, cls) {
+    const div = document.createElement("div");
+    div.className = "message " + cls;
+    text = text.replace(/\[IMAGE:\s*(https?:\/\/[^\]]+)\]/g, (match, url) =>
+        `<a href="${url}" target="_blank"><img src="${url}" style="max-width:200px; border-radius:8px; margin:5px 0;"></a>`
+    );
+    div.innerHTML = formatText(text);
+    chatContainer.appendChild(div);
+    div.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+    addCopyButtons();
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    conversationHistory.push({ role: cls === "user" ? "user" : "assistant", content: text });
+}
+
+// ==========================
+function addThinking() {
+    const div = document.createElement("div");
+    div.className = "message aimi";
+    div.innerHTML = `<div>Aimi está pensando…</div><div class="progress-container"><div class="progress-bar"></div></div>`;
+    chatContainer.appendChild(div);
+    return div;
+}
+
+// ==========================
+// AUTO RESIZE TEXTAREA
+function autoResizeTextarea() {
+    input.style.height = 'auto';
+    input.style.height = input.scrollHeight + 'px';
+}
+
+// ==========================
+// ENVIAR MENSAJE
+async function sendMessage() {
+    const msg = input.value.trim();
+    if (!msg) return;
+    addMessage(msg, "user");
+    input.value = "";
+    autoResizeTextarea();
+    const thinking = addThinking();
+    try {
+        const res = await fetch(`${apiBase}/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ session_id: sessionId, message: msg })
+        });
+        const data = await res.json();
+        thinking.remove();
+        addMessage(data.answer || "Sin respuesta", "aimi");
+    } catch (e) {
+        thinking.remove();
+        addMessage("Error conectando con servidor", "aimi");
+    }
+}
+
+// ==========================
+// EVENTOS
+input.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+input.addEventListener("input", autoResizeTextarea);
+button.addEventListener("click", sendMessage);
+autoResizeTextarea();
