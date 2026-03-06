@@ -129,6 +129,39 @@ function addCopyButtons() {
     });
 }
 
+const clearAllBtn = document.getElementById("clearAllBtn");
+
+clearAllBtn.addEventListener("click", async () => {
+    if (!confirm("¿Seguro que querés eliminar todas las conversaciones de la base de datos?")) return;
+
+    try {
+        // Endpoint que borre todas las conversaciones
+        const res = await fetch(`${apiBase}/clear_conversations`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ session_id: sessionId }) // opcional según backend
+        });
+
+        if (!res.ok) {
+            const err = await res.text();
+            console.error("❌ Error al borrar en backend:", err);
+            alert("Error al eliminar conversaciones en el servidor.");
+            return;
+        }
+
+        // Limpiar DOM
+        container.innerHTML = "";
+        conversationHistory = [];
+
+        console.log("🗑️ Todas las conversaciones eliminadas del servidor y del DOM.");
+        alert("Todas las conversaciones fueron eliminadas correctamente.");
+
+    } catch (e) {
+        console.error("🔥 Error de conexión:", e);
+        alert("No se pudo conectar al servidor.");
+    }
+});
+
 document.addEventListener("DOMContentLoaded", () => {
     loadInteractions();
     setInterval(loadInteractions, 90000);
