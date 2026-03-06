@@ -103,14 +103,30 @@ function addCopyButtons() {
 function addMessage(text, cls) {
     const div = document.createElement("div");
     div.className = "message " + cls;
+
+    // === Detectar imágenes estilo [IMAGE: URL] ===
     text = text.replace(/\[IMAGE:\s*(https?:\/\/[^\]]+)\]/g, (match, url) =>
-        `<a href="${url}" target="_blank"><img src="${url}" style="max-width:200px; border-radius:8px; margin:5px 0;"></a>`
+        `<a href="${url}" target="_blank">
+            <img src="${url}" style="max-width:200px; border-radius:8px; margin:5px 0;">
+        </a>`
     );
+
+    // === Detectar URLs normales y hacerlas clickeables ===
+    text = text.replace(/(https?:\/\/[^\s]+)/g, (url) => {
+        return `<a href="${url}" target="_blank">${url}</a>`;
+    });
+
     div.innerHTML = formatText(text);
+
     chatContainer.appendChild(div);
+
+    // Resaltar cualquier bloque de código
     div.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+
     addCopyButtons();
+
     chatContainer.scrollTop = chatContainer.scrollHeight;
+
     conversationHistory.push({ role: cls === "user" ? "user" : "assistant", content: text });
 }
 
