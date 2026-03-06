@@ -7,6 +7,11 @@ from openai import OpenAI
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from typing import Optional
+from urllib.parse import urlparse, urlunparse
+import re
+import textwrap
+import requests
+
 
 # ==========================
 # Configuración
@@ -98,8 +103,37 @@ def classify_intent(text: str) -> str:
 # Endpoints
 # ==========================
 
-import re
-import textwrap
+def add_www_to_url(url: str) -> str:
+    parsed = urlparse(url)
+    netloc = parsed.netloc or parsed.path  # a veces el dominio está en path
+    if not netloc.startswith("www.") and not netloc.startswith("localhost"):
+        netloc = "www." + netloc
+    # reconstruir URL
+    return urlunparse(parsed._replace(netloc=netloc, path="" if parsed.netloc == "" else parsed.path))
+
+def verify_url(url: str) -> bool:
+    try:
+        r = requests.head(url, timeout=5)
+        return r.status_code == 200
+    except requests.RequestException:
+        return False
+
+def process_links_in_answer(answer: str) -> str:
+    """
+    Detecta URLs en el texto y las valida, agregando www si es necesario.
+    Si la URL no responde, reemplaza el link con un aviso.
+    """
+    url_pattern = r"(https?://[^\s]+)"
+    
+    def repl(match):
+        url = match.group(0)
+        url = add_www_to_url(url)
+        if verify_url(url):
+            return url
+        else:
+            return f"[Sitio no disponible: {url}]"
+    
+    return re.sub(url_pattern, repl, answer)
 
 def auto_format_code(text: str) -> str:
     text = text.strip()
@@ -186,6 +220,8 @@ Reglas estrictas:
     # Post-procesado para imágenes
     answer = process_image_links(answer)
 
+    # Post-procesado para links (www + verificación)
+    answer = process_links_in_answer(answer)
 
     # Actualizar historial
     state["history"].append({"role": "user", "content": msg.message})
