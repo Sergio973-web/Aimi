@@ -127,6 +127,19 @@ def auto_format_code(text: str) -> str:
 
     return f"```python\n{cleaned}\n```"
 
+
+def process_image_links(answer: str) -> str:
+    """
+    Convierte patrones [IMAGE: URL] en Markdown para que el frontend muestre la imagen.
+    """
+    pattern = r"\[IMAGE:\s*(https?://[^\]]+)\]"
+    
+    def repl(match):
+        url = match.group(1)
+        return f"[![Imagen]({url})]({url})"
+    
+    return re.sub(pattern, repl, answer)
+
 # ==========================
 # ENDPOINT CHAT
 # ==========================
@@ -170,6 +183,9 @@ Reglas estrictas:
 
     # Post-procesado para código
     answer = auto_format_code(answer)
+    # Post-procesado para imágenes
+    answer = process_image_links(answer)
+
 
     # Actualizar historial
     state["history"].append({"role": "user", "content": msg.message})
