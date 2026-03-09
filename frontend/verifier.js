@@ -121,7 +121,10 @@ function buscar() {
 
         const texto = document.getElementById("searchBox").value;
 
-        const res = await fetch(`https://aimi-backend-l2u4.onrender.com/interactions?search=${encodeURIComponent(texto)}`);
+        const res = await fetch(
+        `https://aimi-backend-l2u4.onrender.com/interactions?status=pending&search=${encodeURIComponent(texto)}`
+        );
+                
         const data = await res.json();
 
         mostrarResultados(data, texto);

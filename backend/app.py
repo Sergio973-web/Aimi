@@ -256,6 +256,7 @@ from fastapi import Query
 @app.get("/interactions")
 async def get_interactions(
     search: str = Query(None),
+    status: str = Query(None),
     limit: int = Query(50),
     offset: int = Query(0)
 ):
@@ -263,27 +264,30 @@ async def get_interactions(
     with get_db() as conn:
         with conn.cursor() as cur:
 
+            query = """
+                SELECT id, question, answer, status, topic
+                FROM interactions
+                WHERE 1=1
+            """
+            params = []
+
             if search and search.strip():
+                query += " AND (question ILIKE %s OR answer ILIKE %s)"
+                params.append(f"%{search}%")
+                params.append(f"%{search}%")
 
-                cur.execute("""
-                    SELECT id, question, answer, status, topic
-                    FROM interactions
-                    WHERE question ILIKE %s
-                    OR answer ILIKE %s
-                    ORDER BY id DESC
-                    LIMIT %s OFFSET %s;
-                """, (f"%{search}%", f"%{search}%", limit, offset))
+            if status:
+                query += " AND status = %s"
+                params.append(status)
 
-            else:
+            query += " ORDER BY id DESC LIMIT %s OFFSET %s"
+            params.append(limit)
+            params.append(offset)
 
-                cur.execute("""
-                    SELECT id, question, answer, status, topic
-                    FROM interactions
-                    ORDER BY id DESC
-                    LIMIT %s OFFSET %s;
-                """, (limit, offset))
+            cur.execute(query, tuple(params))
 
             return cur.fetchall()
+
 # =========================
 # VERIFIER VOTING
 # =========================
