@@ -251,18 +251,39 @@ Reglas estrictas:
 # =========================
 # GET INTERACTIONS
 # =========================
+from fastapi import Query
+
 @app.get("/interactions")
-async def get_interactions():
+async def get_interactions(
+    search: str = Query(None),
+    limit: int = Query(50),
+    offset: int = Query(0)
+):
+
     with get_db() as conn:
         with conn.cursor() as cur:
-            cur.execute("""
-                SELECT id, question, answer, status, topic
-                FROM interactions
-                ORDER BY id DESC;
-            """)
+
+            if search and search.strip():
+
+                cur.execute("""
+                    SELECT id, question, answer, status, topic
+                    FROM interactions
+                    WHERE question ILIKE %s
+                    OR answer ILIKE %s
+                    ORDER BY id DESC
+                    LIMIT %s OFFSET %s;
+                """, (f"%{search}%", f"%{search}%", limit, offset))
+
+            else:
+
+                cur.execute("""
+                    SELECT id, question, answer, status, topic
+                    FROM interactions
+                    ORDER BY id DESC
+                    LIMIT %s OFFSET %s;
+                """, (limit, offset))
+
             return cur.fetchall()
-
-
 # =========================
 # VERIFIER VOTING
 # =========================

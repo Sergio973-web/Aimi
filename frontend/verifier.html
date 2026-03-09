@@ -111,12 +111,30 @@
 </style>
 </head>
 <body>
-<header>Panel Verificador - Aimi</header>
-<button id="clearAllBtn" style="background:red; color:white; border-radius:25px; padding:12px 20px; cursor:pointer; margin-bottom:10px;">
-    Limpiar todas las conversaciones
-</button>
-<div id="interactions"></div>
+<header class="header">
+    Panel Verificador - Aimi
+</header>
 
+<div class="panel">
+
+    <div class="toolbar">
+
+        <input 
+            type="text" 
+            id="searchBox"
+            placeholder="Buscar interacción..."
+            oninput="buscar()"
+        >
+
+        <button id="clearAllBtn">
+            Limpiar todas las conversaciones
+        </button>
+
+    </div>
+
+    <div id="interactions"></div>
+
+</div>
 <script src="verifier.js"></script>
 
 </body>

@@ -111,6 +111,63 @@ function formatTextVerificador(text) {
     return html;
 }
 
+let searchTimeout;
+
+function buscar() {
+
+    clearTimeout(searchTimeout);
+
+    searchTimeout = setTimeout(async () => {
+
+        const texto = document.getElementById("searchBox").value;
+
+        const res = await fetch(`/interactions?search=${encodeURIComponent(texto)}`);
+        const data = await res.json();
+
+        mostrarResultados(data, texto);
+
+    }, 300);
+
+}
+
+function resaltar(texto, busqueda) {
+
+    if (!busqueda) return texto;
+
+    const regex = new RegExp(`(${busqueda})`, "gi");
+
+    return texto.replace(regex, "<mark>$1</mark>");
+}
+
+function mostrarResultados(data, busqueda) {
+
+    const container = document.getElementById("interactions");
+    container.innerHTML = "";
+
+    data.forEach(i => {
+
+        const div = document.createElement("div");
+        div.className = "interaction";
+
+        const question = resaltar(i.question, busqueda);
+        const answer = resaltar(i.answer, busqueda);
+
+        div.innerHTML = `
+            <b>ID:</b> ${i.id}<br><br>
+
+            <b>Pregunta:</b><br>
+            ${question}<br><br>
+
+            <b>Respuesta:</b><br>
+            ${answer}<br><br>
+
+            <b>Status:</b> ${i.status}
+        `;
+
+        container.appendChild(div);
+
+    });
+}
 
 // Agregar botón de copiar a cada bloque
 function addCopyButtons() {
