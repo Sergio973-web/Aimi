@@ -40,44 +40,86 @@ function verificarSiEsNecesario(nuevoMensaje) {
 // ==========================
 // FORMATEAR TEXTO + CÓDIGO
 function formatText(text) {
+
     text = text.replace(/<p>/g, "")
                .replace(/<\/p>/g, "\n")
                .replace(/<strong>/g, "")
                .replace(/<\/strong>/g, "")
                .trim();
 
-    if (text.startsWith("```")) {
-        const match = text.match(/```(\w*)\n([\s\S]*?)```/);
-        if (match) {
-            const lang = match[1] || "";
-            const code = match[2].trim();
-            return `<pre><code class="language-${lang} hljs">${escapeHTML(code)}</code></pre>`;
-        }
-    }
+    // ======================
+    // BLOQUES DE CÓDIGO ````
+    text = text.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+        return `<pre><code class="language-${lang} hljs">${escapeHTML(code.trim())}</code></pre>`;
+    });
 
-    const simpleCodePatterns = ["def ", "class ", "print(", "return ", "console.log", "function "];
-    if (simpleCodePatterns.some(p => text.includes(p))) {
-        let lang = "";
-        if (text.includes("def ") || text.includes("class ")) lang = "python";
-        else if (text.includes("console.log") || text.includes("function ")) lang = "javascript";
-        let content = text.replace(/;/g, ";\n").replace(/:/g, ":\n").trim();
-        return `<pre><code class="language-${lang} hljs">${escapeHTML(content)}</code></pre>`;
-    }
-
+    // ======================
+    // DETECTAR LISTAS
     const lines = text.split("\n");
+
     let html = "";
-    let inList = false;
+    let inUl = false;
+    let inOl = false;
+
     lines.forEach(line => {
+
         line = line.trim();
+
+        // lista con -
         if (line.match(/^(\-|\*)\s+/)) {
-            if (!inList) { html += "<ul>"; inList = true; }
+
+            if (!inUl) {
+                html += "<ul>";
+                inUl = true;
+            }
+
             html += `<li>${line.replace(/^(\-|\*)\s+/, "")}</li>`;
-        } else {
-            if (inList) { html += "</ul>"; inList = false; }
+            return;
+        }
+
+        // lista numerada
+        if (line.match(/^\d+\.\s+/)) {
+
+            if (!inOl) {
+                html += "<ol>";
+                inOl = true;
+            }
+
+            html += `<li>${line.replace(/^\d+\.\s+/, "")}</li>`;
+            return;
+        }
+
+        if (inUl) {
+            html += "</ul>";
+            inUl = false;
+        }
+
+        if (inOl) {
+            html += "</ol>";
+            inOl = false;
+        }
+
+        // ======================
+        // BLOQUES DESTACADOS
+
+        if (line.startsWith("⚠️")) {
+            html += `<div class="aimi-warning">${line}</div>`;
+        }
+        else if (line.startsWith("🛠")) {
+            html += `<div class="aimi-solution">${line}</div>`;
+        }
+        else if (line.startsWith("💡")) {
+            html += `<div class="aimi-tip">${line}</div>`;
+        }
+        else {
             html += `<p>${line}</p>`;
         }
+
     });
-    if (inList) html += "</ul>";
+
+    if (inUl) html += "</ul>";
+    if (inOl) html += "</ol>";
+
     return html;
 }
 
