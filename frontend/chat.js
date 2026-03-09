@@ -113,8 +113,8 @@ function addMessage(text, cls) {
     let html = formatText(text);
 
     // === Detectar URLs normales y hacerlas clickeables ===
-    html = html.replace(/(https?:\/\/[^\s<]+)/g, (url) => {
-        return `<a href="${url}" target="_blank">${url}</a>`;
+    html = html.replace(/(https?:\/\/[^\s<\]]+)/g, (url) => {
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
     });
 
     div.innerHTML = html;
