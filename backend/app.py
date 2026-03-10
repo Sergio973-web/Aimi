@@ -177,17 +177,39 @@ def process_image_links(answer: str) -> str:
 # ==========================
 # ENDPOINT CHAT
 # ==========================
+from fastapi import HTTPException
+from pydantic import BaseModel
+
+MAX_HISTORY = 20  # ajustá según tu proyecto
+conversation_states = {}
+
+class Message(BaseModel):
+    session_id: str
+    message: str
+
 @app.post("/chat")
 async def chat(msg: Message):
+    # --- Estado de la conversación ---
     state = conversation_states.get(msg.session_id)
     if not state:
-        state = get_initial_state()
+        state = {
+            "objective": "Asistir al usuario manteniendo coherencia conversacional",
+            "current_topic": "general",
+            "history": [],
+            "has_introduced": False
+        }
         conversation_states[msg.session_id] = state
 
-    intent = classify_intent(msg.message)
+    # Inicializar topic si está vacío
+    if not state.get("current_topic"):
+        state["current_topic"] = "general"
+
+    # --- Clasificación de intención ---
+    intent = classify_intent(msg.message)  # tu función actual
     if intent == "provide_resource":
         state["current_topic"] = "resource"
 
+    # --- Construir prompt para GPT ---
     system_prompt = f"""
 Sos Aimi.
 Objetivo: {state['objective']}
@@ -205,44 +227,37 @@ Reglas estrictas:
     messages.extend(state["history"])
     messages.append({"role": "user", "content": msg.message})
 
-    # -------------------------
-    # LOG: prompt completo que se envía a GPT
+    # --- LOG del prompt ---
     print("\n=== PROMPT QUE SE ENVÍA A GPT ===")
     for m in messages:
         role = m['role']
-        content_preview = m['content'][:300]  # mostrar solo los primeros 300 caracteres por claridad
+        content_preview = m['content'][:300]  # mostrar solo primeros 300 chars
         print(f"[{role.upper()}]: {content_preview}\n")
     print("=== FIN DEL PROMPT ===\n")
-    # -------------------------
-    
+
     try:
         completion = client.chat.completions.create(
             model="gpt-4.1-mini",
             messages=messages
         )
         answer = completion.choices[0].message.content
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    # Post-procesado para código
+    # --- Post-procesado (opcional según tu código) ---
     answer = auto_format_code(answer)
-    # Post-procesado para imágenes
     answer = process_image_links(answer)
-
-    # Post-procesado para links (www + verificación)
     answer = process_links_in_answer(answer)
 
-    # Actualizar historial
+    # --- Actualizar historial ---
     state["history"].append({"role": "user", "content": msg.message})
     state["history"].append({"role": "assistant", "content": answer})
-
     if len(state["history"]) > MAX_HISTORY:
         state["history"] = state["history"][-MAX_HISTORY:]
 
     state["has_introduced"] = True
 
-    # Guardar en DB
+    # --- Guardar en DB ---
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -255,8 +270,12 @@ Reglas estrictas:
             )
             conn.commit()
 
-    return {"answer": answer, "source": "ai"}
-
+    # --- Retornar respuesta + preview del prompt ---
+    return {
+        "answer": answer,
+        "source": "ai",
+        "prompt_preview": system_prompt  # para ver en frontend /docs
+    }
 
 # =========================
 # GET INTERACTIONS
