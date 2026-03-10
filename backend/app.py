@@ -200,20 +200,37 @@ async def chat(msg: Message):
         }
         conversation_states[msg.session_id] = state
 
-    # Inicializar topic si está vacío
     if not state.get("current_topic"):
         state["current_topic"] = "general"
 
     # --- Clasificación de intención ---
-    intent = classify_intent(msg.message)  # tu función actual
+    intent = classify_intent(msg.message)
     if intent == "provide_resource":
         state["current_topic"] = "resource"
+
+    # --- Obtener contexto verificado ---
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT question, answer
+                FROM interactions
+                WHERE status = 'stored'
+                ORDER BY id ASC;
+            """)
+            verified_context = cur.fetchall()
+
+    context_text = ""
+    for rec in verified_context:
+        context_text += f"P: {rec['question']}\nR: {rec['answer']}\n\n"
 
     # --- Construir prompt para GPT ---
     system_prompt = f"""
 Sos Aimi.
 Objetivo: {state['objective']}
 Tema actual: {state['current_topic']}
+
+Contexto verificado (respuestas confirmadas):
+{context_text}
 
 Reglas estrictas:
 - No te reinicies.
@@ -231,10 +248,11 @@ Reglas estrictas:
     print("\n=== PROMPT QUE SE ENVÍA A GPT ===")
     for m in messages:
         role = m['role']
-        content_preview = m['content'][:300]  # mostrar solo primeros 300 chars
+        content_preview = m['content'][:300]
         print(f"[{role.upper()}]: {content_preview}\n")
     print("=== FIN DEL PROMPT ===\n")
 
+    # --- Llamada a OpenAI ---
     try:
         completion = client.chat.completions.create(
             model="gpt-4.1-mini",
@@ -244,7 +262,7 @@ Reglas estrictas:
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    # --- Post-procesado (opcional según tu código) ---
+    # --- Post-procesado ---
     answer = auto_format_code(answer)
     answer = process_image_links(answer)
     answer = process_links_in_answer(answer)
@@ -254,7 +272,6 @@ Reglas estrictas:
     state["history"].append({"role": "assistant", "content": answer})
     if len(state["history"]) > MAX_HISTORY:
         state["history"] = state["history"][-MAX_HISTORY:]
-
     state["has_introduced"] = True
 
     # --- Guardar en DB ---
@@ -270,11 +287,11 @@ Reglas estrictas:
             )
             conn.commit()
 
-    # --- Retornar respuesta + preview del prompt ---
+    # --- Retornar respuesta ---
     return {
         "answer": answer,
         "source": "ai",
-        "prompt_preview": system_prompt  # para ver en frontend /docs
+        "prompt_preview": system_prompt
     }
 
 # =========================
