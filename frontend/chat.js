@@ -37,6 +37,41 @@ function verificarSiEsNecesario(nuevoMensaje) {
     });
 }
 
+const micBtn = document.getElementById("micBtn");
+const userInput = document.getElementById("userInput");
+
+let recognition;
+
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    
+    recognition.lang = 'es-AR'; // español Argentina
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        userInput.value = transcript;
+
+        // Opcional: enviar automáticamente
+        // sendMessage(); // descomentar si querés envío automático
+    };
+
+    recognition.onerror = (event) => {
+        console.error("Error de reconocimiento:", event.error);
+    };
+
+} else {
+    micBtn.disabled = true;
+    micBtn.title = "Tu navegador no soporta reconocimiento de voz";
+}
+
+micBtn.addEventListener("click", () => {
+    if (recognition) recognition.start();
+});
+
 // ==========================
 // FORMATEAR TEXTO + CÓDIGO
 function formatText(text) {
