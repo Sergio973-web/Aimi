@@ -334,6 +334,26 @@ async def get_interactions(
 
             return cur.fetchall()
 
+@app.delete("/interactions/{interaction_id}")
+async def delete_interaction(interaction_id: int):
+    with get_db() as conn:
+        with conn.cursor() as cur:
+
+            cur.execute("""
+                DELETE FROM interactions
+                WHERE id = %s
+                RETURNING id;
+            """, (interaction_id,))
+
+            deleted = cur.fetchone()
+
+            conn.commit()
+
+            if not deleted:
+                raise HTTPException(status_code=404, detail="Interacción no encontrada")
+
+    return {"message": f"Interacción {interaction_id} eliminada"}
+    
 # =========================
 # VERIFIER VOTING
 # =========================

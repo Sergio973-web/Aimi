@@ -78,19 +78,30 @@ main{
 
 <body>
 
-<header>Aimi Panel Operador</header>
+<<header>Aimi Panel Operador</header>
 
 <div class="panel">
 
     <div class="toolbar">
 
         <input 
-            type="text" 
+            type="text"
             id="searchBox"
             placeholder="Buscar interacción..."
             oninput="buscar()"
-            style="width: 1000px; height: 40px;"
+            style="width:1000px;height:40px;"
         >
+
+        <input 
+            type="number"
+            id="deleteId"
+            placeholder="ID a eliminar"
+            style="width:150px;height:40px;"
+        >
+
+        <button onclick="eliminarPorId()">
+            Eliminar
+        </button>
 
     </div>
 
@@ -304,6 +315,36 @@ function mostrarResultados(data, busqueda) {
         container.appendChild(div);
 
     });
+}
+
+async function eliminarPorId() {
+
+    const id = document.getElementById("deleteId").value;
+
+    if (!id) {
+        alert("Ingresá un ID");
+        return;
+    }
+
+    if (!confirm("¿Eliminar interacción " + id + "?")) return;
+
+    const res = await fetch(`/interactions/${id}`, {
+        method: "DELETE"
+    });
+
+    if (res.ok) {
+
+        alert("Interacción eliminada");
+
+        buscar(); // recargar resultados
+
+        document.getElementById("deleteId").value = "";
+
+    } else {
+
+        alert("No se pudo eliminar");
+
+    }
 }
 
 // =============================
