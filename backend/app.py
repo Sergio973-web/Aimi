@@ -205,6 +205,16 @@ Reglas estrictas:
     messages.extend(state["history"])
     messages.append({"role": "user", "content": msg.message})
 
+    # -------------------------
+    # LOG: prompt completo que se envía a GPT
+    print("\n=== PROMPT QUE SE ENVÍA A GPT ===")
+    for m in messages:
+        role = m['role']
+        content_preview = m['content'][:300]  # mostrar solo los primeros 300 caracteres por claridad
+        print(f"[{role.upper()}]: {content_preview}\n")
+    print("=== FIN DEL PROMPT ===\n")
+    # -------------------------
+    
     try:
         completion = client.chat.completions.create(
             model="gpt-4.1-mini",
