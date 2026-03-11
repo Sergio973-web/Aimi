@@ -323,31 +323,34 @@ function mostrarResultados(data, busqueda) {
 
 async function eliminarPorId() {
 
-    const id = document.getElementById("deleteId").value;
+    // Obtener el valor del input y convertirlo a número
+    const id = parseInt(document.getElementById("deleteId").value, 10);
 
     if (!id) {
-        alert("Ingresá un ID");
+        alert("Ingresá un ID válido");
         return;
     }
 
     if (!confirm("¿Eliminar interacción " + id + "?")) return;
 
-    const res = await fetch(`/interactions/${id}`, {
-        method: "DELETE"
-    });
+    try {
+        // Usar la URL completa del backend
+        const res = await fetch(`${apiBase}/interactions/${id}`, {
+            method: "DELETE"
+        });
 
-    if (res.ok) {
+        if (res.ok) {
+            alert("Interacción eliminada");
+            buscar(); // recargar resultados
+            document.getElementById("deleteId").value = "";
+        } else {
+            const data = await res.json();
+            alert("No se pudo eliminar: " + (data.detail || res.statusText));
+        }
 
-        alert("Interacción eliminada");
-
-        buscar(); // recargar resultados
-
-        document.getElementById("deleteId").value = "";
-
-    } else {
-
-        alert("No se pudo eliminar");
-
+    } catch (e) {
+        console.error("Error eliminando interacción:", e);
+        alert("Error conectando con el servidor");
     }
 }
 
