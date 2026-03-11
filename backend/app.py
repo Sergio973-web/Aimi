@@ -337,21 +337,35 @@ async def get_interactions(
 
 @app.delete("/interactions/{interaction_id}")
 async def delete_interaction(interaction_id: int):
-    with get_db() as conn:
-        with conn.cursor() as cur:
+    print(f"[DEBUG] DELETE request received for ID: {interaction_id}")
+
+    conn = get_db()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            print("[DEBUG] Cursor abierto, ejecutando DELETE...")
+
             cur.execute("""
                 DELETE FROM interactions
                 WHERE id = %s
                 RETURNING id;
             """, (interaction_id,))
+            
+            deleted = cur.fetchone()
+            print(f"[DEBUG] Resultado DELETE: {deleted}")
 
-            deleted = cur.fetchone()  # con RealDictCursor devuelve dict
-            conn.commit()  # asegurarse que se guarde
+            print("[DEBUG] Confirmando cambios en DB...")
+            conn.commit()
+            print("[DEBUG] Commit realizado")
 
             if not deleted:
+                print("[DEBUG] No se encontró la interacción a eliminar")
                 raise HTTPException(status_code=404, detail="Interacción no encontrada")
-
-    return {"status": "deleted", "interaction_id": deleted['id']}
+            
+            print(f"[DEBUG] Interacción eliminada: {deleted['id']}")
+            return {"status": "deleted", "interaction_id": deleted['id']}
+    finally:
+        conn.close()
+        print("[DEBUG] Conexión cerrada")
     
 # =========================
 # VERIFIER VOTING
