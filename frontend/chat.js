@@ -162,17 +162,19 @@ function formatText(text) {
 // COPIAR CÓDIGO
 function addCopyButtons() {
     document.querySelectorAll("pre").forEach(pre => {
-        if (pre.querySelector(".copy-btn")) return;
+        if (pre.querySelector(".copy-btn")) return; // evitar duplicados
+
+        const code = pre.querySelector("code");
+        if (!code) return; // no hay código, saltear
+
         const btn = document.createElement("button");
         btn.innerText = "Copiar";
         btn.className = "copy-btn";
+
         btn.onclick = () => {
-            const code = pre.querySelector("code"); // selecciona solo el código
-            if (code) {
-                navigator.clipboard.writeText(code.innerText.trim());
-                btn.innerText = "Copiado!";
-                setTimeout(() => btn.innerText = "Copiar", 1500);
-            }
+            navigator.clipboard.writeText(code.innerText.trim());
+            btn.innerText = "Copiado!";
+            setTimeout(() => btn.innerText = "Copiar", 1500);
         };
 
         pre.appendChild(btn);
