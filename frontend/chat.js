@@ -167,10 +167,14 @@ function addCopyButtons() {
         btn.innerText = "Copiar";
         btn.className = "copy-btn";
         btn.onclick = () => {
-            navigator.clipboard.writeText(pre.innerText);
-            btn.innerText = "Copiado!";
-            setTimeout(() => btn.innerText = "Copiar", 1500);
-        }
+            const code = pre.querySelector("code"); // selecciona solo el código
+            if (code) {
+                navigator.clipboard.writeText(code.innerText.trim());
+                btn.innerText = "Copiado!";
+                setTimeout(() => btn.innerText = "Copiar", 1500);
+            }
+        };
+
         pre.appendChild(btn);
     });
 }
