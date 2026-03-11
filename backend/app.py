@@ -120,19 +120,20 @@ def verify_url(url: str) -> bool:
 
 def process_links_in_answer(answer: str) -> str:
     """
-    Detecta URLs en el texto y las valida, agregando www si es necesario.
-    Si la URL no responde, reemplaza el link con un aviso.
+    Detecta URLs en el texto y agrega www si no existe.
+    No bloquea la URL aunque el sitio no responda.
     """
     url_pattern = r"(https?://[^\s]+)"
-    
+
     def repl(match):
         url = match.group(0)
-        url = add_www_to_url(url)
-        if verify_url(url):
-            return url
-        else:
-            return f"[Sitio no disponible: {url}]"
-    
+        parsed = urlparse(url)
+        netloc = parsed.netloc or parsed.path
+        if not netloc.startswith("www.") and not netloc.startswith("localhost"):
+            netloc = "www." + netloc
+        # reconstruir URL, sin verificar con requests
+        return urlunparse(parsed._replace(netloc=netloc, path="" if parsed.netloc == "" else parsed.path))
+
     return re.sub(url_pattern, repl, answer)
 
 def auto_format_code(text: str) -> str:
