@@ -99,26 +99,28 @@ function formatText(text) {
             codeBuffer.push(line.replace(/^( {4}|\t)/, ""));
             inCodeBlock = true;
             return;
-        } else if (inCodeBlock) {
+        } 
+        if (inCodeBlock) {
             html += `<pre><code class="hljs">${escapeHTML(codeBuffer.join("\n"))}</code></pre>`;
             codeBuffer = [];
             inCodeBlock = false;
         }
 
-        // Listas
-        if (trimmed.match(/^(\-|\*)\s+/)) {
-            if (!inUl) html += "<ul>";
-            inUl = true;
+        // Lista con -
+        if (/^(\-|\*)\s+/.test(trimmed)) {
+            if (!inUl) inUl = true, html += "<ul>";
             html += `<li>${trimmed.replace(/^(\-|\*)\s+/, "")}</li>`;
             return;
         }
-        if (trimmed.match(/^\d+\.\s+/)) {
-            if (!inOl) html += "<ol>";
-            inOl = true;
+
+        // Lista numerada
+        if (/^\d+\.\s+/.test(trimmed)) {
+            if (!inOl) inOl = true, html += "<ol>";
             html += `<li>${trimmed.replace(/^\d+\.\s+/, "")}</li>`;
             return;
         }
 
+        // Cerrar listas si no corresponde
         if (inUl) { html += "</ul>"; inUl = false; }
         if (inOl) { html += "</ol>"; inOl = false; }
 
@@ -129,12 +131,16 @@ function formatText(text) {
         else html += `<p>${trimmed}</p>`;
     });
 
+    // Cerrar cualquier bloque abierto
     if (inCodeBlock) html += `<pre><code class="hljs">${escapeHTML(codeBuffer.join("\n"))}</code></pre>`;
     if (inUl) html += "</ul>";
     if (inOl) html += "</ol>";
 
     return html;
 }
+
+
+
     // ======================
     // DETECTAR LISTAS
     const lines = text.split("\n");
