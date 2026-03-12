@@ -75,18 +75,82 @@ micBtn.addEventListener("click", () => {
 // ==========================
 // FORMATEAR TEXTO + CÓDIGO
 function formatText(text) {
-
+    // ======== Limpiar tags básicos ========
     text = text.replace(/<p>/g, "")
                .replace(/<\/p>/g, "\n")
                .replace(/<strong>/g, "")
                .replace(/<\/strong>/g, "")
                .trim();
 
-    // ======================
-    // BLOQUES DE CÓDIGO ````
+    // ======== Detectar bloques con backticks ========
     text = text.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
         return `<pre><code class="language-${lang} hljs">${escapeHTML(code.trim())}</code></pre>`;
     });
+
+    // ======== Detectar bloques de código por indentación (4 espacios o tab) ========
+    const lines = text.split("\n");
+    let html = "";
+    let inCodeBlock = false;
+    let codeBuffer = [];
+
+    let inUl = false;
+    let inOl = false;
+
+    lines.forEach(line => {
+        const trimmed = line.trimEnd();
+
+        // ======== Bloques de código por indentación ========
+        if (/^( {4}|\t)/.test(line)) {
+            codeBuffer.push(line.replace(/^( {4}|\t)/, ""));
+            inCodeBlock = true;
+            return;
+        } else if (inCodeBlock) {
+            // Cerramos bloque de código si ya no hay indentación
+            html += `<pre><code class="hljs">${escapeHTML(codeBuffer.join("\n"))}</code></pre>`;
+            codeBuffer = [];
+            inCodeBlock = false;
+        }
+
+        // ======== Listas con - o * ========
+        if (trimmed.match(/^(\-|\*)\s+/)) {
+            if (!inUl) { html += "<ul>"; inUl = true; }
+            html += `<li>${trimmed.replace(/^(\-|\*)\s+/, "")}</li>`;
+            return;
+        }
+
+        // ======== Listas numeradas ========
+        if (trimmed.match(/^\d+\.\s+/)) {
+            if (!inOl) { html += "<ol>"; inOl = true; }
+            html += `<li>${trimmed.replace(/^\d+\.\s+/, "")}</li>`;
+            return;
+        }
+
+        // Cerrar listas si ya no corresponde
+        if (inUl) { html += "</ul>"; inUl = false; }
+        if (inOl) { html += "</ol>"; inOl = false; }
+
+        // ======== Bloques destacados ========
+        if (trimmed.startsWith("⚠️")) {
+            html += `<div class="aimi-warning">${trimmed}</div>`;
+        } else if (trimmed.startsWith("🛠")) {
+            html += `<div class="aimi-solution">${trimmed}</div>`;
+        } else if (trimmed.startsWith("💡")) {
+            html += `<div class="aimi-tip">${trimmed}</div>`;
+        } else {
+            html += `<p>${trimmed}</p>`;
+        }
+    });
+
+    // ======== Cerrar cualquier bloque de código pendiente ========
+    if (inCodeBlock) {
+        html += `<pre><code class="hljs">${escapeHTML(codeBuffer.join("\n"))}</code></pre>`;
+    }
+
+    if (inUl) html += "</ul>";
+    if (inOl) html += "</ol>";
+
+    return html;
+}
 
     // ======================
     // DETECTAR LISTAS
