@@ -89,17 +89,17 @@ function formatText(text) {
     let inUl = false;
     let inOl = false;
 
-    lines.forEach((line, idx) => {
+    lines.forEach(line => {
         const trimmed = line.trimEnd();
 
-        // Detectar código por indentación (4 espacios o tab)
+        // Código por indentación (4 espacios o tab)
         if (/^( {4}|\t)/.test(line)) {
             codeBuffer.push(line.replace(/^( {4}|\t)/, ""));
             inCodeBlock = true;
-            return; // seguimos acumulando
-        } 
+            return;
+        }
 
-        // Si antes estábamos en código y la línea actual no tiene indentación
+        // Cerrar bloque de código si estaba abierto
         if (inCodeBlock) {
             html += `<pre><code class="hljs">${escapeHTML(codeBuffer.join("\n"))}</code></pre>`;
             codeBuffer = [];
@@ -120,7 +120,7 @@ function formatText(text) {
             return;
         }
 
-        // Cerrar listas si no corresponde
+        // Cerrar listas si ya no corresponde
         if (inUl) { html += "</ul>"; inUl = false; }
         if (inOl) { html += "</ol>"; inOl = false; }
 
@@ -131,15 +131,13 @@ function formatText(text) {
         else html += `<p>${trimmed}</p>`;
     });
 
-    // Cerrar cualquier bloque abierto
+    // Cerrar cualquier bloque de código o lista que haya quedado abierto
     if (inCodeBlock) html += `<pre><code class="hljs">${escapeHTML(codeBuffer.join("\n"))}</code></pre>`;
     if (inUl) html += "</ul>";
     if (inOl) html += "</ol>";
 
     return html;
 }
-
-
 
 // ==========================
 // COPIAR CÓDIGO
