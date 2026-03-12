@@ -72,8 +72,6 @@ micBtn.addEventListener("click", () => {
     if (recognition) recognition.start();
 });
 
-// ==========================
-// FORMATEAR TEXTO + CÓDIGO
 function formatText(text) {
     text = text.replace(/<p>/g, "").replace(/<\/p>/g, "\n")
                .replace(/<strong>/g, "").replace(/<\/strong>/g, "")
@@ -91,31 +89,33 @@ function formatText(text) {
     let inUl = false;
     let inOl = false;
 
-    lines.forEach(line => {
+    lines.forEach((line, idx) => {
         const trimmed = line.trimEnd();
 
-        // Código por indentación
+        // Detectar código por indentación (4 espacios o tab)
         if (/^( {4}|\t)/.test(line)) {
             codeBuffer.push(line.replace(/^( {4}|\t)/, ""));
             inCodeBlock = true;
-            return;
+            return; // seguimos acumulando
         } 
+
+        // Si antes estábamos en código y la línea actual no tiene indentación
         if (inCodeBlock) {
             html += `<pre><code class="hljs">${escapeHTML(codeBuffer.join("\n"))}</code></pre>`;
             codeBuffer = [];
             inCodeBlock = false;
         }
 
-        // Lista con -
+        // Listas con - o *
         if (/^(\-|\*)\s+/.test(trimmed)) {
-            if (!inUl) inUl = true, html += "<ul>";
+            if (!inUl) { html += "<ul>"; inUl = true; }
             html += `<li>${trimmed.replace(/^(\-|\*)\s+/, "")}</li>`;
             return;
         }
 
-        // Lista numerada
+        // Listas numeradas
         if (/^\d+\.\s+/.test(trimmed)) {
-            if (!inOl) inOl = true, html += "<ol>";
+            if (!inOl) { html += "<ol>"; inOl = true; }
             html += `<li>${trimmed.replace(/^\d+\.\s+/, "")}</li>`;
             return;
         }
@@ -138,6 +138,7 @@ function formatText(text) {
 
     return html;
 }
+
 
 
 // ==========================
