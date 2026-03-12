@@ -73,73 +73,34 @@ micBtn.addEventListener("click", () => {
 });
 
 function formatText(text) {
-    text = text.replace(/<p>/g, "").replace(/<\/p>/g, "\n")
-               .replace(/<strong>/g, "").replace(/<\/strong>/g, "")
+    text = text.replace(/<p>/g, "")
+               .replace(/<\/p>/g, "\n")
+               .replace(/<strong>/g, "")
+               .replace(/<\/strong>/g, "")
                .trim();
 
-    // Bloques con backticks
-    text = text.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
-        return `<pre><code class="language-${lang} hljs">${escapeHTML(code.trim())}</code></pre>`;
-    });
+    if (text.startsWith("```")) {
+        const match = text.match(/```(\w*)\n([\s\S]*?)```/);
+        if (match) {
+            const lang = match[1] || "";
+            const code = match[2].trim();
+            return `<pre><code class="language-${lang} hljs">${escapeHTML(code)}</code></pre>`;
+        }
+    }
+
+    const simpleCodePatterns = ["def ", "class ", "print(", "return ", "console.log", "function "];
+    if (simpleCodePatterns.some(p => text.includes(p))) {
+        let lang = text.includes("def ") || text.includes("class ") ? "python" : "javascript";
+        let content = text.replace(/;/g, ";\n").replace(/:/g, ":\n").trim();
+        return `<pre><code class="language-${lang} hljs">${escapeHTML(content)}</code></pre>`;
+    }
 
     const lines = text.split("\n");
     let html = "";
-    let inCodeBlock = false;
-    let codeBuffer = [];
-    let inUl = false;
-    let inOl = false;
-
-    const codeIndicators = [/;/, /{/, /}/, /\(/, /\)/, /=>/, /\bconst\b/, /\blet\b/, /\bfunction\b/];
-
     lines.forEach(line => {
-        const trimmed = line.trimEnd();
-
-        // Detectar código por indentación o contenido típico de código
-        const looksLikeCode = /^( {4}|\t)/.test(line) || codeIndicators.some(rx => rx.test(trimmed));
-
-        if (looksLikeCode) {
-            codeBuffer.push(line.replace(/^( {4}|\t)/, ""));
-            inCodeBlock = true;
-            return;
-        }
-
-        // Cerrar bloque de código si estaba abierto
-        if (inCodeBlock) {
-            html += `<pre><code class="hljs">${escapeHTML(codeBuffer.join("\n"))}</code></pre>`;
-            codeBuffer = [];
-            inCodeBlock = false;
-        }
-
-        // Listas con - o *
-        if (/^(\-|\*)\s+/.test(trimmed)) {
-            if (!inUl) { html += "<ul>"; inUl = true; }
-            html += `<li>${trimmed.replace(/^(\-|\*)\s+/, "")}</li>`;
-            return;
-        }
-
-        // Listas numeradas
-        if (/^\d+\.\s+/.test(trimmed)) {
-            if (!inOl) { html += "<ol>"; inOl = true; }
-            html += `<li>${trimmed.replace(/^\d+\.\s+/, "")}</li>`;
-            return;
-        }
-
-        // Cerrar listas si ya no corresponde
-        if (inUl) { html += "</ul>"; inUl = false; }
-        if (inOl) { html += "</ol>"; inOl = false; }
-
-        // Bloques destacados
-        if (trimmed.startsWith("⚠️")) html += `<div class="aimi-warning">${trimmed}</div>`;
-        else if (trimmed.startsWith("🛠")) html += `<div class="aimi-solution">${trimmed}</div>`;
-        else if (trimmed.startsWith("💡")) html += `<div class="aimi-tip">${trimmed}</div>`;
-        else html += `<p>${trimmed}</p>`;
+        line = line.trim();
+        html += `<p>${line}</p>`;
     });
-
-    // Cerrar cualquier bloque de código o lista que haya quedado abierto
-    if (inCodeBlock) html += `<pre><code class="hljs">${escapeHTML(codeBuffer.join("\n"))}</code></pre>`;
-    if (inUl) html += "</ul>";
-    if (inOl) html += "</ol>";
-
     return html;
 }
 
