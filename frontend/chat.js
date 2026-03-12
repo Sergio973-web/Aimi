@@ -89,11 +89,15 @@ function formatText(text) {
     let inUl = false;
     let inOl = false;
 
+    const codeIndicators = [/;/, /{/, /}/, /\(/, /\)/, /=>/, /\bconst\b/, /\blet\b/, /\bfunction\b/];
+
     lines.forEach(line => {
         const trimmed = line.trimEnd();
 
-        // Código por indentación (4 espacios o tab)
-        if (/^( {4}|\t)/.test(line)) {
+        // Detectar código por indentación o contenido típico de código
+        const looksLikeCode = /^( {4}|\t)/.test(line) || codeIndicators.some(rx => rx.test(trimmed));
+
+        if (looksLikeCode) {
             codeBuffer.push(line.replace(/^( {4}|\t)/, ""));
             inCodeBlock = true;
             return;
