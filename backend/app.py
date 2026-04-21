@@ -55,6 +55,15 @@ def get_db():
         connect_timeout=10
     )
 
+@app.get("/db-test")
+def db_test():
+    try:
+        conn = get_db()
+        conn.close()
+        return {"db": "ok"}
+    except Exception as e:
+        return {"db": "error", "detail": str(e)}
+        
 # ==========================
 # DB Init
 # ==========================
