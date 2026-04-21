@@ -197,6 +197,10 @@ def process_image_links(answer: str) -> str:
 # ==========================
 # ENDPOINT CHAT
 
+@app.get("/")
+def root():
+    return {"status": "ok"}
+    
 @app.post("/chat")
 async def chat(msg: Message):
     # --- Estado de la conversación ---
