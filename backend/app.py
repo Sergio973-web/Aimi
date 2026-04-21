@@ -201,7 +201,7 @@ def process_image_links(answer: str) -> str:
 @app.get("/")
 def root():
     return {"status": "ok"}
-    
+
 @app.post("/chat")
 async def chat(msg: Message):
     # --- Estado de la conversación ---
@@ -275,14 +275,20 @@ Reglas estrictas:
 
     # --- Llamada a OpenAI ---
     try:
+        if not OPENAI_API_KEY:
+            raise Exception("OPENAI_API_KEY no está configurada")
+
         completion = client.chat.completions.create(
             model="gpt-4.1-mini",
             messages=messages
         )
-        answer = completion.choices[0].message.content
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
+        answer = completion.choices[0].message.content
+
+    except Exception as e:
+        print("❌ OPENAI ERROR REAL:", repr(e))  # 👈 CLAVE
+        raise HTTPException(status_code=500, detail="Error en OpenAI o API key")
+        
     # --- Post-procesado ---
     answer = auto_format_code(answer)
     answer = process_image_links(answer)
