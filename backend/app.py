@@ -18,6 +18,9 @@ import requests
 # ==========================
 load_dotenv()
 
+print("OPENAI_API_KEY:", "OK" if OPENAI_API_KEY else "MISSING")
+print("DATABASE_URL:", "OK" if DATABASE_URL else "MISSING")
+
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
@@ -28,7 +31,7 @@ app = FastAPI(title="Aimi Backend")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,   # 👈 ESTA LÍNEA ES LA CLAVE
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -316,7 +319,7 @@ Reglas estrictas:
     finally:
         if conn:
             conn.close()
-            
+
 
     # --- Retornar respuesta ---
     return {
