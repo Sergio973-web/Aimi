@@ -18,13 +18,13 @@ import requests
 # ==========================
 load_dotenv()
 
-print("OPENAI_API_KEY:", "OK" if OPENAI_API_KEY else "MISSING")
-print("DATABASE_URL:", "OK" if DATABASE_URL else "MISSING")
-
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
+
+print("OPENAI_API_KEY:", "OK" if OPENAI_API_KEY else "MISSING")
+print("DATABASE_URL:", "OK" if DATABASE_URL else "MISSING")
 
 app = FastAPI(title="Aimi Backend")
 
