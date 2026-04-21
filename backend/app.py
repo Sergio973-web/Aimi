@@ -40,6 +40,7 @@ app.add_middleware(
 # DB Connection
 # ==========================
 def get_db():
+    print("DATABASE_URL:", DATABASE_URL)
     if not DATABASE_URL:
         raise Exception("DATABASE_URL no configurada")
 
