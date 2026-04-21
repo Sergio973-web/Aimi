@@ -36,8 +36,19 @@ app.add_middleware(
 # DB Connection
 # ==========================
 def get_db():
-    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+    try:
+        if not DATABASE_URL:
+            raise Exception("DATABASE_URL no configurada")
 
+        url = DATABASE_URL
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+
+        return psycopg2.connect(url, cursor_factory=RealDictCursor)
+
+    except Exception as e:
+        print("❌ DB ERROR:", e)
+        raise
 # ==========================
 # DB Init
 # ==========================
