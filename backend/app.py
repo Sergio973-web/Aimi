@@ -276,7 +276,7 @@ Reglas estrictas:
     # --- Llamada a OpenAI ---
     try:
         if not OPENAI_API_KEY:
-            raise Exception("OPENAI_API_KEY no está configurada")
+            raise Exception("Falta OPENAI_API_KEY")
 
         completion = client.chat.completions.create(
             model="gpt-4.1-mini",
@@ -286,9 +286,9 @@ Reglas estrictas:
         answer = completion.choices[0].message.content
 
     except Exception as e:
-        print("❌ OPENAI ERROR REAL:", repr(e))  # 👈 CLAVE
-        raise HTTPException(status_code=500, detail="Error en OpenAI o API key")
-        
+        print("❌ OPENAI ERROR:", repr(e))
+        answer = "Error generando respuesta"
+
     # --- Post-procesado ---
     answer = auto_format_code(answer)
     answer = process_image_links(answer)
@@ -302,17 +302,21 @@ Reglas estrictas:
     state["has_introduced"] = True
 
     # --- Guardar en DB ---
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO interactions (question, answer)
-                VALUES (%s, %s)
-                RETURNING *;
-                """,
-                (msg.message, answer)
-            )
-            conn.commit()
+    conn = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT question, answer
+            FROM interactions
+            WHERE status = 'stored'
+            ORDER BY id ASC;
+        """)
+        verified_context = cur.fetchall()
+    finally:
+        if conn:
+            conn.close()
+            
 
     # --- Retornar respuesta ---
     return {
