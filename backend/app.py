@@ -28,6 +28,7 @@ app = FastAPI(title="Aimi Backend")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,   # 👈 ESTA LÍNEA ES LA CLAVE
     allow_methods=["*"],
     allow_headers=["*"],
 )
