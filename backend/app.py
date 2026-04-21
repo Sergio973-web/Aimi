@@ -36,19 +36,20 @@ app.add_middleware(
 # DB Connection
 # ==========================
 def get_db():
-    try:
-        if not DATABASE_URL:
-            raise Exception("DATABASE_URL no configurada")
+    if not DATABASE_URL:
+        raise Exception("DATABASE_URL no configurada")
 
-        url = DATABASE_URL
-        if url.startswith("postgres://"):
-            url = url.replace("postgres://", "postgresql://", 1)
+    url = DATABASE_URL
 
-        return psycopg2.connect(url, cursor_factory=RealDictCursor)
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
 
-    except Exception as e:
-        print("❌ DB ERROR:", e)
-        raise
+    return psycopg2.connect(
+        url,
+        cursor_factory=RealDictCursor,
+        connect_timeout=10
+    )
+
 # ==========================
 # DB Init
 # ==========================
@@ -68,7 +69,14 @@ def init_db():
             """)
             conn.commit()
 
-init_db()
+@app.on_event("startup")
+def startup():
+    try:
+        init_db()
+        print("✅ DB OK")
+    except Exception as e:
+        print("❌ DB INIT ERROR:", e)
+
 
 # ==========================
 # Models
@@ -188,16 +196,6 @@ def process_image_links(answer: str) -> str:
 
 # ==========================
 # ENDPOINT CHAT
-# ==========================
-from fastapi import HTTPException
-from pydantic import BaseModel
-
-MAX_HISTORY = 20  # ajustá según tu proyecto
-conversation_states = {}
-
-class Message(BaseModel):
-    session_id: str
-    message: str
 
 @app.post("/chat")
 async def chat(msg: Message):
@@ -221,16 +219,22 @@ async def chat(msg: Message):
         state["current_topic"] = "resource"
 
     # --- Obtener contexto verificado ---
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT question, answer
-                FROM interactions
-                WHERE status = 'stored'
-                ORDER BY id ASC;
-            """)
-            verified_context = cur.fetchall()
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT question, answer
+                    FROM interactions
+                    WHERE status = 'stored'
+                    ORDER BY id ASC;
+                """)
+                verified_context = cur.fetchall()
 
+    except Exception as e:
+        print("❌ DB ERROR:", e)
+        verified_context = []
+
+    # construir contexto igual aunque falle DB
     context_text = ""
     for rec in verified_context:
         context_text += f"P: {rec['question']}\nR: {rec['answer']}\n\n"
