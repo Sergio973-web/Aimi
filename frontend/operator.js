@@ -19,11 +19,6 @@ async function load() {
 
 async function store(id) {
   const topic = document.getElementById("t" + id).value.trim();
-  if (!topic) {
-    alert("Tenés que escribir un tema");
-    return;
-  }
-
   await fetch(`${API}/operator/approve`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
