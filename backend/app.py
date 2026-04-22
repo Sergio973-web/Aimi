@@ -513,28 +513,74 @@ async def expert_reject(v: Vote):
 # =========================
 # OPERATOR APPROVE + TOPIC
 # =========================
+from typing import Optional
+
 class OperatorApprove(BaseModel):
     interaction_id: int
-    topic: str
+    topic: Optional[str] = None
 
 @app.post("/operator/approve")
 async def operator_approve(a: OperatorApprove):
-    if not a.interaction_id or not a.topic:
-        raise HTTPException(status_code=400, detail="interaction_id y topic son obligatorios")
-    
+
+    if not a.interaction_id:
+        raise HTTPException(status_code=400, detail="interaction_id es obligatorio")
+
     try:
         with get_db() as conn:
             with conn.cursor() as cur:
+
+                topic = a.topic
+
+                # 🔥 Si no viene topic → generarlo automáticamente
+                if not topic or topic.strip() == "":
+
+                    cur.execute("""
+                        SELECT question FROM interactions
+                        WHERE id = %s
+                    """, (a.interaction_id,))
+
+                    row = cur.fetchone()
+
+                    if not row:
+                        raise HTTPException(status_code=404, detail="Interacción no encontrada")
+
+                    prompt = row["question"]
+
+
+                    completion = client.chat.completions.create(
+                        model="gpt-4.1-mini",
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": "Genera un topic corto tipo etiqueta (1 a 3 palabras, sin explicación)."
+                            },
+                            {
+                                "role": "user",
+                                "content": prompt
+                            }
+                        ],
+                        max_tokens=10,
+                        temperature=0.5
+                    )
+
+                    topic = completion.choices[0].message.content.strip()
+
+                # 🔧 Normalizar
+                topic = topic.lower().replace(" ", "_")
+
+                # 💾 Guardar
                 cur.execute("""
                     UPDATE interactions
                     SET status = 'stored', topic = %s
                     WHERE id = %s;
-                """, (a.topic, a.interaction_id))
-                conn.commit()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al actualizar interacción: {e}")
+                """, (topic, a.interaction_id))
 
-    return {"ok": True}
+                conn.commit()
+
+        return {"ok": True, "topic": topic}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # =========================
 # GENERAR TOPIC AUTOMÁTICO (OPERADOR)
