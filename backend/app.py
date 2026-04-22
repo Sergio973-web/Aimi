@@ -523,6 +523,8 @@ class OperatorApprove(BaseModel):
 @app.post("/operator/approve")
 async def operator_approve(a: OperatorApprove):
 
+    print("🔥 ENTRO A OPERATOR_APPROVE", a.interaction_id)  # 👈 ACÁ
+
     if not a.interaction_id:
         raise HTTPException(status_code=400, detail="interaction_id es obligatorio")
 
@@ -532,8 +534,12 @@ async def operator_approve(a: OperatorApprove):
 
                 topic = a.topic
 
+                print("📌 TOPIC RECIBIDO:", topic)  # 👈 ACÁ
+
                 # 🔥 Si no viene topic → generarlo automáticamente
                 if not topic or topic.strip() == "":
+
+                    print("⚙️ GENERANDO TOPIC AUTOMÁTICO")  # 👈 ACÁ
 
                     cur.execute("""
                         SELECT question FROM interactions
@@ -541,6 +547,8 @@ async def operator_approve(a: OperatorApprove):
                     """, (a.interaction_id,))
 
                     row = cur.fetchone()
+
+                    print("📥 ROW DB:", row)  # 👈 ACÁ
 
                     if not row:
                         raise HTTPException(status_code=404, detail="Interacción no encontrada")
@@ -566,8 +574,15 @@ async def operator_approve(a: OperatorApprove):
 
                     topic = completion.choices[0].message.content.strip()
 
+                    print("🤖 TOPIC GENERADO:", topic)  # 👈 ACÁ
+
                 # 🔧 Normalizar
                 topic = topic.lower().replace(" ", "_")
+
+                print("🧹 TOPIC FINAL:", topic)  # 👈 ACÁ
+
+                # 👇 ACÁ VA
+                print("💾 GUARDANDO ID:", a.interaction_id)
 
                 # 💾 Guardar
                 cur.execute("""
