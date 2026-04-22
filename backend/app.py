@@ -519,20 +519,6 @@ class OperatorApprove(BaseModel):
     interaction_id: int
     topic: Optional[str] = None
 
-def normalize_topic(topic: str) -> str:
-    # quitar tildes
-    topic = unicodedata.normalize('NFKD', topic).encode('ascii', 'ignore').decode('ascii')
-
-    # minúsculas
-    topic = topic.lower()
-
-    # limpiar caracteres raros
-    topic = re.sub(r"[^a-z0-9_ ]", "", topic)
-
-    # espacios a _
-    topic = topic.replace(" ", "_")
-
-    return topic
 
 @app.post("/operator/approve")
 async def operator_approve(a: OperatorApprove):
@@ -581,11 +567,8 @@ async def operator_approve(a: OperatorApprove):
                     topic = completion.choices[0].message.content.strip()
 
                 # 🔧 Normalizar
-                if not topic or topic.strip() == "":
-                    topic = "general"
+                topic = topic.lower().replace(" ", "_")
 
-                topic = normalize_topic(topic)
-                
                 # 💾 Guardar
                 cur.execute("""
                     UPDATE interactions
