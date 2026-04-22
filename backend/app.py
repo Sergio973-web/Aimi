@@ -55,15 +55,6 @@ def get_db():
         connect_timeout=10
     )
 
-@app.get("/db-test")
-def db_test():
-    try:
-        conn = get_db()
-        conn.close()
-        return {"db": "ok"}
-    except Exception as e:
-        return {"db": "error", "detail": str(e)}
-        
 # ==========================
 # DB Init
 # ==========================
@@ -409,7 +400,46 @@ async def delete_interaction(interaction_id: int):
     finally:
         conn.close()
         print("[DEBUG] Conexión cerrada")
-    
+
+class SaveInteraction(BaseModel):
+    question: str
+    answer: str
+
+@app.post("/interactions/save")
+async def save_interaction(data: SaveInteraction):
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+
+                # 🔍 1. Verificar si ya existe
+                cur.execute("""
+                    SELECT id FROM interactions
+                    WHERE question = %s AND answer = %s
+                """, (data.question, data.answer))
+
+                existing = cur.fetchone()
+
+                if existing:
+                    return {
+                        "ok": True,
+                        "msg": "Ya existe",
+                        "id": existing["id"]
+                    }
+
+                # 💾 2. Insertar si NO existe
+                cur.execute("""
+                    INSERT INTO interactions (question, answer, status)
+                    VALUES (%s, %s, 'pending')
+                    RETURNING id;
+                """, (data.question, data.answer))
+
+                new_id = cur.fetchone()["id"]
+                conn.commit()
+
+        return {"ok": True, "id": new_id}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 # =========================
 # VERIFIER VOTING
 # =========================
