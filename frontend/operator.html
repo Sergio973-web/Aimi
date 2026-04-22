@@ -237,7 +237,19 @@ async function loadInteractions(){
 
                     div.remove();
 
-                    console.log("Guardado con topic:",topic);
+                    const msg = document.createElement("div");
+                    msg.innerText = "✅ Guardado en memoria (" + topic + ")";
+                    msg.style.position = "fixed";
+                    msg.style.bottom = "20px";
+                    msg.style.right = "20px";
+                    msg.style.background = "#2ecc71";
+                    msg.style.color = "white";
+                    msg.style.padding = "10px 15px";
+                    msg.style.borderRadius = "8px";
+
+                    document.body.appendChild(msg);
+
+                    setTimeout(()=> msg.remove(), 3000);
 
                 }catch(e){
 
