@@ -581,8 +581,11 @@ async def operator_approve(a: OperatorApprove):
                     topic = completion.choices[0].message.content.strip()
 
                 # 🔧 Normalizar
-                topic = normalize_topic(topic)
+                if not topic or topic.strip() == "":
+                    topic = "general"
 
+                topic = normalize_topic(topic)
+                
                 # 💾 Guardar
                 cur.execute("""
                     UPDATE interactions
