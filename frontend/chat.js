@@ -127,37 +127,62 @@ function addCopyButtons() {
     });
 }
 
+
+async function saveInteraction(answer) {
+    // buscar la última pregunta del usuario
+    const lastUserMessage = [...conversationHistory]
+        .reverse()
+        .find(m => m.role === "user");
+
+    if (!lastUserMessage) return;
+
+    try {
+        await fetch(`${apiBase}/interactions/save`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                question: lastUserMessage.content,
+                answer: answer
+            })
+        });
+
+        alert("✅ Guardado para entrenamiento");
+
+    } catch (e) {
+        alert("❌ Error al guardar");
+    }
+}
+
+
 function addMessage(text, cls) {
     const div = document.createElement("div");
     div.className = "message " + cls;
 
-    // === Detectar imágenes estilo [IMAGE: URL] ===
-    text = text.replace(/\[IMAGE:\s*(https?:\/\/[^\]]+)\]/g, (match, url) =>
-        `<a href="${url}" target="_blank">
-            <img src="${url}" style="max-width:200px; border-radius:8px; margin:5px 0;">
-        </a>`
-    );
-
-    // === Formatear el texto primero ===
     let html = formatText(text);
 
-    // === Detectar URLs normales y hacerlas clickeables ===
     html = html.replace(/(https?:\/\/[^\s<\]]+)/g, (url) => {
-        return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+        return `<a href="${url}" target="_blank">${url}</a>`;
     });
 
     div.innerHTML = html;
 
+    // 👉 BOTÓN SOLO PARA RESPUESTAS DE AIMI
+    if (cls === "aimi") {
+        const likeBtn = document.createElement("button");
+        likeBtn.innerText = "👍";
+        likeBtn.style.marginTop = "8px";
+
+        likeBtn.onclick = () => saveInteraction(text);
+
+        div.appendChild(likeBtn);
+    }
+
     chatContainer.appendChild(div);
 
-    // Resaltar cualquier bloque de código
-    div.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
-
-    addCopyButtons();
-
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-
-    conversationHistory.push({ role: cls === "user" ? "user" : "assistant", content: text });
+    conversationHistory.push({
+        role: cls === "user" ? "user" : "assistant",
+        content: text
+    });
 }
 
 // ==========================
